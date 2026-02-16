@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Note, relativeTime } from "@/lib/types";
+import ExportMenu from "./ExportMenu";
 
 interface NoteEditorProps {
   note: Note;
@@ -50,6 +51,15 @@ export default function NoteEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note.id]);
 
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Reset confirm state after timeout
+  useEffect(() => {
+    if (!confirmDelete) return;
+    const timer = setTimeout(() => setConfirmDelete(false), 2000);
+    return () => clearTimeout(timer);
+  }, [confirmDelete]);
+
   const wordCount = note.body.trim()
     ? note.body.trim().split(/\s+/).length
     : 0;
@@ -75,6 +85,7 @@ export default function NoteEditor({
               className="w-full font-hand text-5xl text-ink placeholder:text-ink-muted/30 bg-transparent border-none outline-none tracking-wide peer"
             />
             <motion.div
+              data-print-hide
               className="h-px bg-accent/30"
               initial={{ scaleX: 0 }}
               animate={{ scaleX: 1 }}
@@ -89,6 +100,7 @@ export default function NoteEditor({
 
           {/* Metadata bar */}
           <motion.div
+            data-print-hide
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.15 }}
@@ -117,29 +129,52 @@ export default function NoteEditor({
               )}
             </AnimatePresence>
 
-            {/* Delete button */}
-            <div className="ml-auto">
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                whileHover={{ color: "#C0392B" }}
-                onClick={() => onDelete(note.id)}
-                className="text-ink-muted/50 hover:text-danger transition-colors duration-150 p-1.5 rounded-md hover:bg-danger/5 cursor-pointer"
-                title="Delete note"
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </motion.button>
+            {/* Export & Delete */}
+            <div className="ml-auto flex items-center gap-1">
+              <ExportMenu note={note} />
+              <AnimatePresence mode="wait" initial={false}>
+                {confirmDelete ? (
+                  <motion.button
+                    key="confirm"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.15 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => onDelete(note.id)}
+                    className="text-danger text-[11px] font-medium px-2 py-1 rounded-md bg-danger/10 hover:bg-danger/15 transition-colors duration-150 cursor-pointer"
+                  >
+                    Sure?
+                  </motion.button>
+                ) : (
+                  <motion.button
+                    key="trash"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.15 }}
+                    whileTap={{ scale: 0.9 }}
+                    whileHover={{ color: "#C0392B" }}
+                    onClick={() => setConfirmDelete(true)}
+                    className="text-ink-muted/50 hover:text-danger transition-colors duration-150 p-1.5 rounded-md hover:bg-danger/5 cursor-pointer"
+                    title="Delete note"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </motion.button>
+                )}
+              </AnimatePresence>
             </div>
           </motion.div>
 

@@ -59,6 +59,31 @@ body {
   background-position-y: 20px;
 }
 
+/* Print styles */
+@media print {
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+    color: black;
+  }
+
+  .notebook-lines {
+    background-image: none;
+  }
+
+  main {
+    overflow: visible !important;
+  }
+
+  textarea {
+    overflow: visible !important;
+    height: auto !important;
+  }
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *,

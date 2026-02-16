@@ -45,6 +45,7 @@ export default function Sidebar({
 }: SidebarProps) {
   return (
     <motion.aside
+      data-print-hide
       className="w-80 min-w-80 border-r border-edge flex flex-col bg-surface"
       initial={{ x: -320, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
