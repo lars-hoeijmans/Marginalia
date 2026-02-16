@@ -10,13 +10,19 @@ if (isProd) {
 
 function createWindow() {
   const win = new BrowserWindow({
+    title: "Marginalia",
     width: 1200,
     height: 800,
+    show: false,
     titleBarStyle: "hiddenInset",
     backgroundColor: "#FAF7F2",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
     },
+  });
+
+  win.once("ready-to-show", () => {
+    win.show();
   });
 
   if (isProd) {
