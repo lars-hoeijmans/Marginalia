@@ -22,13 +22,27 @@ export const metadata: Metadata = {
   description: "A beautiful note-taking app",
 };
 
+const themeScript = `
+(function() {
+  try {
+    var theme = localStorage.getItem('marginalia-theme');
+    if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    }
+  } catch(e) {}
+})();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body
         className={`${geist.variable} ${caveat.variable} ${sourceSerif.variable} antialiased`}
       >

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { Note } from "@/lib/types";
 
 const STORAGE_KEY = "marginalia-notes";
 const SAVE_DELAY = 600;
+const UNDO_TIMEOUT = 7000;
 
 const defaultNotes: Note[] = [
   {
@@ -30,13 +31,22 @@ const defaultNotes: Note[] = [
   },
 ];
 
+interface PendingDelete {
+  note: Note;
+  index: number;
+}
+
 export function useNotes() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(
+    null
+  );
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const deleteTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     try {
@@ -59,6 +69,7 @@ export function useNotes() {
   useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
     };
   }, []);
 
@@ -73,13 +84,19 @@ export function useNotes() {
 
   const selectedNote = notes.find((n) => n.id === selectedId) ?? null;
 
-  const filteredNotes = searchQuery
-    ? notes.filter(
-        (n) =>
-          n.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          n.body.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : notes;
+  const filteredNotes = useMemo(() => {
+    const filtered = searchQuery
+      ? notes.filter(
+          (n) =>
+            n.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            n.body.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      : notes;
+
+    const pinned = filtered.filter((n) => n.pinned);
+    const unpinned = filtered.filter((n) => !n.pinned);
+    return [...pinned, ...unpinned];
+  }, [notes, searchQuery]);
 
   const createNote = useCallback(() => {
     const newNote: Note = {
@@ -111,7 +128,14 @@ export function useNotes() {
 
   const deleteNote = useCallback(
     (id: string) => {
+      // Discard any existing pending delete
+      if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+      setPendingDelete(null);
+
       const idx = notes.findIndex((n) => n.id === id);
+      if (idx === -1) return;
+
+      const deletedNote = notes[idx];
       const updated = notes.filter((n) => n.id !== id);
       setNotes(updated);
       persist(updated);
@@ -120,8 +144,55 @@ export function useNotes() {
         const newIdx = Math.min(idx, updated.length - 1);
         setSelectedId(updated[newIdx]?.id ?? null);
       }
+
+      setPendingDelete({ note: deletedNote, index: idx });
+      deleteTimerRef.current = setTimeout(() => {
+        setPendingDelete(null);
+      }, UNDO_TIMEOUT);
     },
     [notes, selectedId, persist]
+  );
+
+  const undoDelete = useCallback(() => {
+    if (!pendingDelete) return;
+    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+
+    const { note, index } = pendingDelete;
+    setNotes((prev) => {
+      const clampedIdx = Math.min(index, prev.length);
+      const updated = [...prev];
+      updated.splice(clampedIdx, 0, note);
+      persist(updated);
+      return updated;
+    });
+    setSelectedId(note.id);
+    setPendingDelete(null);
+  }, [pendingDelete, persist]);
+
+  const dismissDelete = useCallback(() => {
+    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+    setPendingDelete(null);
+  }, []);
+
+  const togglePin = useCallback(
+    (id: string) => {
+      setNotes((prev) => {
+        const updated = prev.map((n) =>
+          n.id === id ? { ...n, pinned: !n.pinned } : n
+        );
+        persist(updated);
+        return updated;
+      });
+    },
+    [persist]
+  );
+
+  const reorderNotes = useCallback(
+    (reordered: Note[]) => {
+      setNotes(reordered);
+      persist(reordered);
+    },
+    [persist]
   );
 
   return {
@@ -132,10 +203,15 @@ export function useNotes() {
     searchQuery,
     isSaving,
     isLoaded,
+    pendingDelete,
     selectNote: setSelectedId,
     createNote,
     updateNote,
     deleteNote,
+    undoDelete,
+    dismissDelete,
+    togglePin,
+    reorderNotes,
     setSearchQuery,
   };
 }

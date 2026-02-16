@@ -4,6 +4,7 @@ export interface Note {
   body: string;
   createdAt: number;
   updatedAt: number;
+  pinned?: boolean;
 }
 
 export function relativeTime(timestamp: number): string {

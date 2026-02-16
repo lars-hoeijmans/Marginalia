@@ -1,6 +1,7 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { useMemo } from "react";
+import { AnimatePresence, motion, Reorder } from "framer-motion";
 import { Note, relativeTime } from "@/lib/types";
 
 interface SidebarProps {
@@ -8,41 +9,108 @@ interface SidebarProps {
   selectedId: string | null;
   searchQuery: string;
   isSaving: boolean;
+  theme: "light" | "dark";
   onSelectNote: (id: string) => void;
   onCreateNote: () => void;
   onSetSearchQuery: (query: string) => void;
+  onTogglePin: (id: string) => void;
+  onToggleTheme: () => void;
+  onReorderNotes: (reordered: Note[]) => void;
 }
 
-const listVariants = {
-  show: {
-    transition: { staggerChildren: 0.04 },
-  },
-} as const;
+interface NoteCardProps {
+  note: Note;
+  isSelected: boolean;
+  onSelect: () => void;
+  onTogglePin: (id: string) => void;
+}
 
-const cardVariants = {
-  hidden: { opacity: 0, y: 10 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { type: "spring" as const, stiffness: 400, damping: 28 },
-  },
-  exit: {
-    opacity: 0,
-    x: -40,
-    filter: "blur(4px)",
-    transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] as const },
-  },
-};
+function NoteCard({ note, isSelected, onSelect, onTogglePin }: NoteCardProps) {
+  return (
+    <div className="relative group">
+      <button
+        onClick={onSelect}
+        className={`w-full text-left p-3 rounded-lg cursor-pointer transition-colors duration-150 ${
+          isSelected
+            ? "bg-accent-light border border-accent/20"
+            : "hover:bg-surface-hover border border-transparent"
+        }`}
+      >
+        <p
+          className={`font-hand text-xl leading-tight truncate ${
+            isSelected ? "text-accent" : "text-ink"
+          }`}
+        >
+          {note.title || "Untitled"}
+        </p>
+        <p className="text-xs text-ink-muted mt-1 line-clamp-2 leading-relaxed">
+          {note.body || "Empty note"}
+        </p>
+        <p className="text-[10px] text-ink-muted/50 mt-1.5">
+          {relativeTime(note.updatedAt)}
+        </p>
+      </button>
+
+      {/* Pin button */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onTogglePin(note.id);
+        }}
+        className={`absolute top-2 right-2 p-1 rounded-md transition-all duration-150 cursor-pointer ${
+          note.pinned
+            ? "opacity-100 text-accent"
+            : "opacity-0 group-hover:opacity-100 text-ink-muted hover:text-accent"
+        }`}
+        title={note.pinned ? "Unpin note" : "Pin note"}
+        aria-label={note.pinned ? "Unpin note" : "Pin note"}
+      >
+        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
+          {note.pinned ? (
+            <path
+              d="M16 3a1 1 0 0 1 .707.293l4 4a1 1 0 0 1-.164 1.547l-3.454 2.3-.457 2.74a1 1 0 0 1-.283.546l-2.122 2.122a1 1 0 0 1-1.414 0L10.5 14.227l-4.273 4.273a1 1 0 0 1-1.414-1.414L9.086 12.8l-2.321-2.321a1 1 0 0 1 0-1.414l2.122-2.122a1 1 0 0 1 .546-.283l2.74-.457 2.3-3.454A1 1 0 0 1 16 3Z"
+              fill="currentColor"
+            />
+          ) : (
+            <path
+              d="M16 3a1 1 0 0 1 .707.293l4 4a1 1 0 0 1-.164 1.547l-3.454 2.3-.457 2.74a1 1 0 0 1-.283.546l-2.122 2.122a1 1 0 0 1-1.414 0L10.5 14.227l-4.273 4.273a1 1 0 0 1-1.414-1.414L9.086 12.8l-2.321-2.321a1 1 0 0 1 0-1.414l2.122-2.122a1 1 0 0 1 .546-.283l2.74-.457 2.3-3.454A1 1 0 0 1 16 3Z"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            />
+          )}
+        </svg>
+      </button>
+    </div>
+  );
+}
 
 export default function Sidebar({
   notes,
   selectedId,
   searchQuery,
   isSaving,
+  theme,
   onSelectNote,
   onCreateNote,
   onSetSearchQuery,
+  onTogglePin,
+  onToggleTheme,
+  onReorderNotes,
 }: SidebarProps) {
+  const pinnedNotes = useMemo(() => notes.filter((n) => n.pinned), [notes]);
+  const unpinnedNotes = useMemo(() => notes.filter((n) => !n.pinned), [notes]);
+
+  const isDraggable = !searchQuery;
+
+  const handlePinnedReorder = (reordered: Note[]) => {
+    onReorderNotes([...reordered, ...unpinnedNotes]);
+  };
+
+  const handleUnpinnedReorder = (reordered: Note[]) => {
+    onReorderNotes([...pinnedNotes, ...reordered]);
+  };
+
   return (
     <motion.aside
       data-print-hide
@@ -86,6 +154,56 @@ export default function Sidebar({
               />
             </svg>
           </motion.span>
+
+          {/* Theme toggle */}
+          <button
+            onClick={onToggleTheme}
+            className="ml-auto p-1.5 rounded-md text-ink-muted hover:text-ink hover:bg-surface-hover transition-colors duration-150 cursor-pointer"
+            title={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+            aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              {theme === "light" ? (
+                <motion.svg
+                  key="moon"
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  initial={{ opacity: 0, rotate: -90 }}
+                  animate={{ opacity: 1, rotate: 0 }}
+                  exit={{ opacity: 0, rotate: 90 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <path
+                    d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </motion.svg>
+              ) : (
+                <motion.svg
+                  key="sun"
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  initial={{ opacity: 0, rotate: -90 }}
+                  animate={{ opacity: 1, rotate: 0 }}
+                  exit={{ opacity: 0, rotate: 90 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <path
+                    d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </motion.svg>
+              )}
+            </AnimatePresence>
+          </button>
         </motion.div>
         <motion.p
           className="text-xs text-ink-muted mt-1"
@@ -144,47 +262,115 @@ export default function Sidebar({
       </div>
 
       {/* Note list */}
-      <motion.div
-        className="flex-1 overflow-y-auto px-3 pb-3"
-        variants={listVariants}
-        initial="hidden"
-        animate="show"
-      >
-        <AnimatePresence mode="popLayout">
-          {notes.map((note) => {
-            const isSelected = selectedId === note.id;
-            return (
-              <motion.button
-                key={note.id}
-                variants={cardVariants}
-                exit="exit"
-                layout
-                onClick={() => onSelectNote(note.id)}
-                whileHover={{ y: -1, transition: { type: "spring", stiffness: 400, damping: 20 } }}
-                whileTap={{ scale: 0.98 }}
-                className={`w-full text-left p-3 rounded-lg mb-1.5 cursor-pointer transition-colors duration-150 ${
-                  isSelected
-                    ? "bg-accent-light border border-accent/20"
-                    : "hover:bg-surface-hover border border-transparent"
-                }`}
+      <div className="flex-1 overflow-y-auto px-3 pb-3">
+        {/* Pinned section */}
+        {pinnedNotes.length > 0 && (
+          <>
+            {isDraggable ? (
+              <Reorder.Group
+                axis="y"
+                values={pinnedNotes}
+                onReorder={handlePinnedReorder}
               >
-                <p
-                  className={`font-hand text-xl leading-tight truncate ${
-                    isSelected ? "text-accent" : "text-ink"
-                  }`}
+                {pinnedNotes.map((note) => (
+                  <Reorder.Item
+                    key={note.id}
+                    value={note}
+                    as="div"
+                    layout
+                    whileDrag={{ scale: 1.02, boxShadow: "0 4px 20px rgba(0,0,0,0.12)" }}
+                    className="mb-1.5"
+                  >
+                    <NoteCard
+                      note={note}
+                      isSelected={selectedId === note.id}
+                      onSelect={() => onSelectNote(note.id)}
+                      onTogglePin={onTogglePin}
+                    />
+                  </Reorder.Item>
+                ))}
+              </Reorder.Group>
+            ) : (
+              pinnedNotes.map((note) => (
+                <motion.div
+                  key={note.id}
+                  layout
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, x: -40, filter: "blur(4px)" }}
+                  transition={{ type: "spring", stiffness: 400, damping: 28 }}
+                  className="mb-1.5"
                 >
-                  {note.title || "Untitled"}
-                </p>
-                <p className="text-xs text-ink-muted mt-1 line-clamp-2 leading-relaxed">
-                  {note.body || "Empty note"}
-                </p>
-                <p className="text-[10px] text-ink-muted/50 mt-1.5">
-                  {relativeTime(note.updatedAt)}
-                </p>
-              </motion.button>
-            );
-          })}
-        </AnimatePresence>
+                  <NoteCard
+                    note={note}
+                    isSelected={selectedId === note.id}
+                    onSelect={() => onSelectNote(note.id)}
+                    onTogglePin={onTogglePin}
+                  />
+                </motion.div>
+              ))
+            )}
+
+            {/* Divider between pinned and unpinned */}
+            {unpinnedNotes.length > 0 && (
+              <div className="h-px bg-edge-light my-2" />
+            )}
+          </>
+        )}
+
+        {/* Unpinned section */}
+        {isDraggable ? (
+          <Reorder.Group
+            axis="y"
+            values={unpinnedNotes}
+            onReorder={handleUnpinnedReorder}
+          >
+            <AnimatePresence mode="popLayout">
+              {unpinnedNotes.map((note) => (
+                <Reorder.Item
+                  key={note.id}
+                  value={note}
+                  as="div"
+                  layout
+                  whileDrag={{ scale: 1.02, boxShadow: "0 4px 20px rgba(0,0,0,0.12)" }}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, x: -40, filter: "blur(4px)", transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] } }}
+                  transition={{ type: "spring", stiffness: 400, damping: 28 }}
+                  className="mb-1.5"
+                >
+                  <NoteCard
+                    note={note}
+                    isSelected={selectedId === note.id}
+                    onSelect={() => onSelectNote(note.id)}
+                    onTogglePin={onTogglePin}
+                  />
+                </Reorder.Item>
+              ))}
+            </AnimatePresence>
+          </Reorder.Group>
+        ) : (
+          <AnimatePresence mode="popLayout">
+            {unpinnedNotes.map((note) => (
+              <motion.div
+                key={note.id}
+                layout
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, x: -40, filter: "blur(4px)", transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] } }}
+                transition={{ type: "spring", stiffness: 400, damping: 28 }}
+                className="mb-1.5"
+              >
+                <NoteCard
+                  note={note}
+                  isSelected={selectedId === note.id}
+                  onSelect={() => onSelectNote(note.id)}
+                  onTogglePin={onTogglePin}
+                />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        )}
 
         {notes.length === 0 && searchQuery && (
           <motion.p
@@ -195,7 +381,7 @@ export default function Sidebar({
             No notes match &ldquo;{searchQuery}&rdquo;
           </motion.p>
         )}
-      </motion.div>
+      </div>
 
       {/* New note button */}
       <div className="p-3 border-t border-edge-light">

@@ -1,18 +1,48 @@
 @import "tailwindcss";
 
+:root {
+  --c-bg: #FAF7F2;
+  --c-surface: #FFFFFF;
+  --c-surface-hover: #F5F0EA;
+  --c-accent: #CC785C;
+  --c-accent-hover: #B86B51;
+  --c-accent-light: #F5E6DE;
+  --c-ink: #2D2926;
+  --c-ink-secondary: #8C7E73;
+  --c-ink-muted: #B5A99A;
+  --c-edge: #E8E0D6;
+  --c-edge-light: #F0EBE3;
+  --c-danger: #C0392B;
+}
+
+.dark {
+  --c-bg: #3D3A36;
+  --c-surface: #46423E;
+  --c-surface-hover: #504C48;
+  --c-accent: #EDA48C;
+  --c-accent-hover: #DFA08A;
+  --c-accent-light: #5A453B;
+  --c-ink: #FDFBF9;
+  --c-ink-secondary: #E0D9D2;
+  --c-ink-muted: #B0A69C;
+  --c-edge: #635E5A;
+  --c-edge-light: #565250;
+  --c-danger: #F06050;
+}
+
 @theme inline {
-  --color-bg: #FAF7F2;
-  --color-surface: #FFFFFF;
-  --color-surface-hover: #F5F0EA;
-  --color-accent: #CC785C;
-  --color-accent-hover: #B86B51;
-  --color-accent-light: #F5E6DE;
-  --color-ink: #2D2926;
-  --color-ink-secondary: #8C7E73;
-  --color-ink-muted: #B5A99A;
-  --color-edge: #E8E0D6;
-  --color-edge-light: #F0EBE3;
-  --color-danger: #C0392B;
+  --color-bg: var(--c-bg);
+  --color-surface: var(--c-surface);
+  --color-surface-hover: var(--c-surface-hover);
+  --color-accent: var(--c-accent);
+  --color-accent-hover: var(--c-accent-hover);
+  --color-accent-light: var(--c-accent-light);
+  --color-ink: var(--c-ink);
+  --color-ink-secondary: var(--c-ink-secondary);
+  --color-ink-muted: var(--c-ink-muted);
+  --color-edge: var(--c-edge);
+  --color-edge-light: var(--c-edge-light);
+  --color-danger: var(--c-danger);
 
   --font-sans: var(--font-geist-sans);
   --font-hand: var(--font-caveat);
@@ -20,8 +50,8 @@
 }
 
 body {
-  background: #FAF7F2;
-  color: #2D2926;
+  background: var(--c-bg);
+  color: var(--c-ink);
 }
 
 /* Custom scrollbar */
@@ -34,18 +64,18 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #E8E0D6;
+  background: var(--c-edge);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #B5A99A;
+  background: var(--c-ink-muted);
 }
 
 /* Selection */
 ::selection {
-  background-color: #F5E6DE;
-  color: #2D2926;
+  background-color: var(--c-accent-light);
+  color: var(--c-ink);
 }
 
 /* Notebook lines for the editor area */
@@ -57,6 +87,15 @@ body {
     rgba(0, 0, 0, 0.022) 32px
   );
   background-position-y: 20px;
+}
+
+.dark .notebook-lines {
+  background-image: repeating-linear-gradient(
+    transparent,
+    transparent 31px,
+    rgba(255, 255, 255, 0.04) 31px,
+    rgba(255, 255, 255, 0.04) 32px
+  );
 }
 
 /* Print styles */

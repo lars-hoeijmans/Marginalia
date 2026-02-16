@@ -3,9 +3,11 @@
 import { useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNotes } from "@/hooks/useNotes";
+import { useTheme } from "@/hooks/useTheme";
 import Sidebar from "./Sidebar";
 import NoteEditor from "./NoteEditor";
 import EmptyState from "./EmptyState";
+import UndoToast from "./UndoToast";
 
 export default function App() {
   const {
@@ -16,12 +18,19 @@ export default function App() {
     searchQuery,
     isSaving,
     isLoaded,
+    pendingDelete,
     selectNote,
     createNote,
     updateNote,
     deleteNote,
+    undoDelete,
+    dismissDelete,
+    togglePin,
+    reorderNotes,
     setSearchQuery,
   } = useNotes();
+
+  const { theme, toggleTheme, isThemeLoaded } = useTheme();
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -37,14 +46,19 @@ export default function App() {
         e.preventDefault();
         document.getElementById("search-input")?.focus();
       }
+
+      if (mod && e.key === "z" && pendingDelete) {
+        e.preventDefault();
+        undoDelete();
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [createNote]);
+  }, [createNote, pendingDelete, undoDelete]);
 
   // Loading state
-  if (!isLoaded) {
+  if (!isLoaded || !isThemeLoaded) {
     return (
       <div className="flex h-screen items-center justify-center bg-bg">
         <motion.div
@@ -66,9 +80,13 @@ export default function App() {
         selectedId={selectedId}
         searchQuery={searchQuery}
         isSaving={isSaving}
+        theme={theme}
         onSelectNote={selectNote}
         onCreateNote={createNote}
         onSetSearchQuery={setSearchQuery}
+        onTogglePin={togglePin}
+        onToggleTheme={toggleTheme}
+        onReorderNotes={reorderNotes}
       />
 
       <main className="flex-1 overflow-hidden">
@@ -90,6 +108,17 @@ export default function App() {
           )}
         </AnimatePresence>
       </main>
+
+      <AnimatePresence>
+        {pendingDelete && (
+          <UndoToast
+            key={pendingDelete.note.id}
+            noteTitle={pendingDelete.note.title}
+            onUndo={undoDelete}
+            onDismiss={dismissDelete}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
