@@ -2,13 +2,19 @@
   "name": "marginalia",
   "version": "0.1.0",
   "private": true,
+  "main": "electron-dist/main.js",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "dev:electron": "esbuild electron/main.ts electron/preload.ts --bundle --platform=node --external:electron --outdir=electron-dist && electron .",
+    "build:electron": "esbuild electron/main.ts electron/preload.ts --bundle --platform=node --external:electron --outdir=electron-dist",
+    "dist": "npm run build && npm run build:electron && electron-builder"
   },
   "dependencies": {
+    "electron-serve": "^2.1.1",
+    "framer-motion": "^12.34.0",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3"
@@ -18,9 +24,27 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "electron": "^35.0.0",
+    "electron-builder": "^26.0.0",
+    "esbuild": "^0.25.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "build": {
+    "appId": "com.marginalia.app",
+    "productName": "Marginalia",
+    "files": [
+      "electron-dist/**/*",
+      "out/**/*"
+    ],
+    "mac": {
+      "target": {
+        "target": "dmg",
+        "arch": "arm64"
+      },
+      "category": "public.app-category.productivity"
+    }
   }
 }
