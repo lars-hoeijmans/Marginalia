@@ -1,6 +1,7 @@
 {
   "name": "marginalia",
-  "version": "0.1.0",
+  "productName": "Marginalia",
+  "version": "0.2.0",
   "private": true,
   "main": "electron-dist/main.js",
   "scripts": {
