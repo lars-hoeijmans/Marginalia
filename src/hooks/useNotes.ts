@@ -49,21 +49,48 @@ export function useNotes() {
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed: Note[] = JSON.parse(stored);
-        setNotes(parsed);
-        if (parsed.length > 0) setSelectedId(parsed[0].id);
+    let cancelled = false;
+
+    async function load() {
+      let loaded: Note[] | null = null;
+
+      if (window.electron) {
+        loaded = await window.electron.loadNotes();
+
+        // One-time migration from localStorage
+        if (!loaded) {
+          try {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+              loaded = JSON.parse(stored);
+              if (loaded) {
+                await window.electron.saveNotes(loaded);
+                localStorage.removeItem(STORAGE_KEY);
+              }
+            }
+          } catch {
+            // Migration failed — fall through to defaults
+          }
+        }
       } else {
-        setNotes(defaultNotes);
-        setSelectedId(defaultNotes[0].id);
+        try {
+          const stored = localStorage.getItem(STORAGE_KEY);
+          if (stored) loaded = JSON.parse(stored);
+        } catch {
+          // Corrupt localStorage — fall through to defaults
+        }
       }
-    } catch {
-      setNotes(defaultNotes);
-      setSelectedId(defaultNotes[0].id);
+
+      if (cancelled) return;
+
+      const result = loaded ?? defaultNotes;
+      setNotes(result);
+      if (result.length > 0) setSelectedId(result[0].id);
+      setIsLoaded(true);
     }
-    setIsLoaded(true);
+
+    load();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -76,8 +103,12 @@ export function useNotes() {
   const persist = useCallback((updated: Note[]) => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     setIsSaving(true);
-    saveTimeoutRef.current = setTimeout(() => {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    saveTimeoutRef.current = setTimeout(async () => {
+      if (window.electron) {
+        await window.electron.saveNotes(updated);
+      } else {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      }
       setIsSaving(false);
     }, SAVE_DELAY);
   }, []);

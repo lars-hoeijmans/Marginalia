@@ -99,6 +99,10 @@ export default function App() {
       setOnboardingOpen(true);
     });
 
+    const removeExportNotes = window.electron.onExportNotes(() => {
+      window.electron!.exportNotes();
+    });
+
     return () => {
       removeImport();
       removeModal();
@@ -106,6 +110,7 @@ export default function App() {
       removeOpenSettings();
       removePickAndTranscribe();
       removeOpenOnboarding();
+      removeExportNotes();
     };
   }, [importNotes, pickAndTranscribe]);
 

@@ -3,6 +3,20 @@ import { contextBridge, ipcRenderer } from "electron";
 contextBridge.exposeInMainWorld("electron", {
   importTextFiles: () => ipcRenderer.invoke("import-text-files"),
 
+  loadNotes: () => ipcRenderer.invoke("load-notes"),
+
+  saveNotes: (notes: unknown[]) => ipcRenderer.invoke("save-notes", notes),
+
+  exportNotes: () => ipcRenderer.invoke("export-notes"),
+
+  onExportNotes: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on("export-notes", handler);
+    return () => {
+      ipcRenderer.removeListener("export-notes", handler);
+    };
+  },
+
   listAppleNotes: () => ipcRenderer.invoke("list-apple-notes"),
 
   getAppleNoteBodies: (ids: string[]) =>

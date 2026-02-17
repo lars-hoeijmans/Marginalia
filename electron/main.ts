@@ -13,6 +13,20 @@ import {
   setSelectedModel,
 } from "./whisper";
 
+function stripHtmlToPlain(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(div|p|li)>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&quot;/g, '"')
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 const isProd = app.isPackaged;
 
 if (isProd) {
@@ -96,6 +110,14 @@ function buildMenu() {
           click: handleImportFromAudio,
         },
         { type: "separator" },
+        {
+          label: "Export all notes\u2026",
+          click: () => {
+            if (!mainWindow) return;
+            mainWindow.webContents.send("export-notes");
+          },
+        },
+        { type: "separator" },
         { role: "close" },
       ],
     },
@@ -164,6 +186,69 @@ function handleImportFromAudio() {
     mainWindow.webContents.send("open-whisper-setup");
   }
 }
+
+// Notes storage IPC handlers
+
+const notesPath = path.join(app.getPath("userData"), "notes.json");
+
+ipcMain.handle("load-notes", async () => {
+  try {
+    const data = await fs.promises.readFile(notesPath, "utf-8");
+    return JSON.parse(data);
+  } catch {
+    return null;
+  }
+});
+
+ipcMain.handle("save-notes", async (_event, notes: unknown[]) => {
+  const tmp = notesPath + ".tmp";
+  await fs.promises.writeFile(tmp, JSON.stringify(notes, null, 2), "utf-8");
+  await fs.promises.rename(tmp, notesPath);
+});
+
+ipcMain.handle("export-notes", async () => {
+  if (!mainWindow) return false;
+
+  const defaultDir = path.join(app.getPath("documents"), "Marginalia");
+
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: "Export all notes",
+    defaultPath: defaultDir,
+    properties: ["openDirectory", "createDirectory"],
+  });
+
+  if (result.canceled || result.filePaths.length === 0) return false;
+
+  try {
+    const data = await fs.promises.readFile(notesPath, "utf-8");
+    const notes: Array<{ title: string; body: string }> = JSON.parse(data);
+    const dir = result.filePaths[0];
+
+    const usedNames = new Set<string>();
+    for (const note of notes) {
+      let base = (note.title || "Untitled")
+        .replace(/[/\\:*?"<>|]/g, "-")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 100);
+
+      let name = base;
+      let i = 2;
+      while (usedNames.has(name.toLowerCase())) {
+        name = `${base} ${i++}`;
+      }
+      usedNames.add(name.toLowerCase());
+
+      const body = stripHtmlToPlain(note.body);
+      const content = `# ${note.title || "Untitled"}\n\n${body}\n`;
+      await fs.promises.writeFile(path.join(dir, `${name}.md`), content, "utf-8");
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+});
 
 // Import text files IPC handler
 

@@ -1,3 +1,5 @@
+import type { Note } from "./types";
+
 interface AppleNoteEntry {
   id: string;
   name: string;
@@ -23,6 +25,10 @@ interface WhisperModelInfo {
 }
 
 interface ElectronAPI {
+  loadNotes: () => Promise<Note[] | null>;
+  saveNotes: (notes: Note[]) => Promise<void>;
+  exportNotes: () => Promise<boolean>;
+  onExportNotes: (callback: () => void) => () => void;
   importTextFiles: () => Promise<Array<{ title: string; body: string }>>;
   listAppleNotes: () => Promise<AppleNoteEntry[]>;
   getAppleNoteBodies: (
