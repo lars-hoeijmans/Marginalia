@@ -83,7 +83,7 @@ function buildMenu() {
       label: "File",
       submenu: [
         {
-          label: "Import notes from text",
+          label: "Import from text files",
           accelerator: "CmdOrCtrl+Shift+I",
           click: handleImportTextFiles,
         },
