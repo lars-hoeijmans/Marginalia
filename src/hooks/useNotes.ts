@@ -187,6 +187,26 @@ export function useNotes() {
     [persist]
   );
 
+  const importNotes = useCallback(
+    (incoming: Array<{ title: string; body: string }>) => {
+      const newNotes: Note[] = incoming.map((n) => ({
+        id: crypto.randomUUID(),
+        title: n.title,
+        body: n.body,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }));
+      const updated = [...newNotes, ...notes];
+      setNotes(updated);
+      if (newNotes.length > 0) {
+        setSelectedId(newNotes[0].id);
+      }
+      setSearchQuery("");
+      persist(updated);
+    },
+    [notes, persist]
+  );
+
   const reorderNotes = useCallback(
     (reordered: Note[]) => {
       setNotes(reordered);
@@ -212,6 +232,7 @@ export function useNotes() {
     dismissDelete,
     togglePin,
     reorderNotes,
+    importNotes,
     setSearchQuery,
   };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNotes } from "@/hooks/useNotes";
 import { useTheme } from "@/hooks/useTheme";
@@ -8,6 +8,7 @@ import Sidebar from "./Sidebar";
 import NoteEditor from "./NoteEditor";
 import EmptyState from "./EmptyState";
 import UndoToast from "./UndoToast";
+import AppleNotesModal from "./AppleNotesModal";
 
 export default function App() {
   const {
@@ -27,10 +28,33 @@ export default function App() {
     dismissDelete,
     togglePin,
     reorderNotes,
+    importNotes,
     setSearchQuery,
   } = useNotes();
 
   const { theme, toggleTheme, isThemeLoaded } = useTheme();
+
+  const [appleNotesOpen, setAppleNotesOpen] = useState(false);
+
+  const closeAppleNotes = useCallback(() => setAppleNotesOpen(false), []);
+
+  // Electron IPC listeners
+  useEffect(() => {
+    if (!window.electron) return;
+
+    const removeImport = window.electron.onImportNotes((notes) => {
+      importNotes(notes);
+    });
+
+    const removeModal = window.electron.onOpenAppleNotesModal(() => {
+      setAppleNotesOpen(true);
+    });
+
+    return () => {
+      removeImport();
+      removeModal();
+    };
+  }, [importNotes]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -116,6 +140,16 @@ export default function App() {
             noteTitle={pendingDelete.note.title}
             onUndo={undoDelete}
             onDismiss={dismissDelete}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {appleNotesOpen && (
+          <AppleNotesModal
+            key="apple-notes"
+            onImport={importNotes}
+            onClose={closeAppleNotes}
           />
         )}
       </AnimatePresence>

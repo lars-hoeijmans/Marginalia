@@ -1,7 +1,7 @@
 {
   "name": "marginalia",
   "productName": "Marginalia",
-  "version": "0.3.0",
+  "version": "0.35.0",
   "private": true,
   "main": "electron-dist/main.js",
   "scripts": {
@@ -46,7 +46,10 @@
         "target": "dmg",
         "arch": "arm64"
       },
-      "category": "public.app-category.productivity"
+      "category": "public.app-category.productivity",
+      "extendInfo": {
+        "NSAppleEventsUsageDescription": "Marginalia needs access to Apple Notes to import your notes."
+      }
     }
   }
 }
