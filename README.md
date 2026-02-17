@@ -12,10 +12,27 @@ Inspired by marginalia — the notes scholars have scribbled in book margins for
 
 ## What it does
 
-- Write notes with **bold**, **italic**, and **underline**
-- Pin, reorder, search, and export
+**Writing**
+- Rich text editing with **bold**, *italic*, and underline
+- Auto-saves as you type — never lose a thought
+
+**Organizing**
+- Pin important notes to the top
+- Drag-and-drop reorder
+- Full-text search across titles and content
+
+**Import & Export**
+- Import from `.txt`, `.md`, Apple Notes, or audio via local [Whisper](https://github.com/ggerganov/whisper.cpp) transcription
+- Export as `.txt`, `.md`, or PDF — individually or in bulk
+
+**Quick Note** (desktop app)
+- Global shortcut (`Cmd + Shift + N`) opens a small floating window
+- Jot something down and close — it's saved instantly
+
+**Other**
 - Light and dark mode
 - Undo accidental deletes
+- Menu bar tray for quick access
 - Runs in the browser or as a macOS desktop app
 
 ## Keyboard Shortcuts
@@ -23,7 +40,9 @@ Inspired by marginalia — the notes scholars have scribbled in book margins for
 | Shortcut | Action |
 |---|---|
 | `Cmd + N` | New note |
+| `Cmd + Shift + N` | Quick Note (desktop) |
 | `Cmd + K` | Search notes |
+| `Cmd + ,` | Settings (desktop) |
 | `Cmd + B` | Bold |
 | `Cmd + I` | Italic |
 | `Cmd + U` | Underline |
