@@ -43,3 +43,6 @@ next-env.d.ts
 # electron
 /electron-dist/
 /dist/
+
+# compiled binaries (rebuild with npm run setup:whisper)
+/resources/bin/

@@ -9,6 +9,8 @@ import NoteEditor from "./NoteEditor";
 import EmptyState from "./EmptyState";
 import UndoToast from "./UndoToast";
 import AppleNotesModal from "./AppleNotesModal";
+import WhisperSetupModal from "./WhisperSetupModal";
+import TranscriptionProgress from "./TranscriptionProgress";
 
 export default function App() {
   const {
@@ -35,8 +37,28 @@ export default function App() {
   const { theme, toggleTheme, isThemeLoaded } = useTheme();
 
   const [appleNotesOpen, setAppleNotesOpen] = useState(false);
+  const [whisperSetupOpen, setWhisperSetupOpen] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
 
   const closeAppleNotes = useCallback(() => setAppleNotesOpen(false), []);
+  const closeWhisperSetup = useCallback(() => setWhisperSetupOpen(false), []);
+
+  const pickAndTranscribe = useCallback(async () => {
+    if (!window.electron) return;
+
+    const filePath = await window.electron.pickAudioFile();
+    if (!filePath) return;
+
+    setTranscribing(true);
+    try {
+      const result = await window.electron.transcribeAudio(filePath);
+      importNotes([result]);
+    } catch {
+      // Transcription failed — progress toast will dismiss
+    } finally {
+      setTranscribing(false);
+    }
+  }, [importNotes]);
 
   // Electron IPC listeners
   useEffect(() => {
@@ -50,11 +72,21 @@ export default function App() {
       setAppleNotesOpen(true);
     });
 
+    const removeWhisperSetup = window.electron.onOpenWhisperSetup(() => {
+      setWhisperSetupOpen(true);
+    });
+
+    const removePickAndTranscribe = window.electron.onPickAndTranscribeAudio(() => {
+      pickAndTranscribe();
+    });
+
     return () => {
       removeImport();
       removeModal();
+      removeWhisperSetup();
+      removePickAndTranscribe();
     };
-  }, [importNotes]);
+  }, [importNotes, pickAndTranscribe]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -152,6 +184,23 @@ export default function App() {
             onClose={closeAppleNotes}
           />
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {whisperSetupOpen && (
+          <WhisperSetupModal
+            key="whisper-setup"
+            onComplete={() => {
+              setWhisperSetupOpen(false);
+              pickAndTranscribe();
+            }}
+            onClose={closeWhisperSetup}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {transcribing && <TranscriptionProgress key="transcription" />}
       </AnimatePresence>
     </div>
   );

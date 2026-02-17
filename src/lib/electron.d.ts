@@ -6,6 +6,12 @@ interface AppleNoteEntry {
   preview: string;
 }
 
+interface WhisperDownloadProgress {
+  percent: number;
+  downloadedMB: number;
+  totalMB: number;
+}
+
 interface ElectronAPI {
   listAppleNotes: () => Promise<AppleNoteEntry[]>;
   getAppleNoteBodies: (
@@ -15,6 +21,17 @@ interface ElectronAPI {
     callback: (notes: Array<{ title: string; body: string }>) => void
   ) => () => void;
   onOpenAppleNotesModal: (callback: () => void) => () => void;
+  whisperModelStatus: () => Promise<string | null>;
+  downloadWhisperModel: (filename: string) => Promise<void>;
+  pickAudioFile: () => Promise<string | null>;
+  transcribeAudio: (
+    filePath: string
+  ) => Promise<{ title: string; body: string }>;
+  onWhisperDownloadProgress: (
+    callback: (progress: WhisperDownloadProgress) => void
+  ) => () => void;
+  onOpenWhisperSetup: (callback: () => void) => () => void;
+  onPickAndTranscribeAudio: (callback: () => void) => () => void;
 }
 
 declare global {
@@ -23,4 +40,4 @@ declare global {
   }
 }
 
-export type { AppleNoteEntry, ElectronAPI };
+export type { AppleNoteEntry, ElectronAPI, WhisperDownloadProgress };

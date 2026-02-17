@@ -1,7 +1,7 @@
 {
   "name": "marginalia",
   "productName": "Marginalia",
-  "version": "0.35.0",
+  "version": "0.60.0",
   "private": true,
   "main": "electron-dist/main.js",
   "scripts": {
@@ -11,7 +11,8 @@
     "lint": "eslint",
     "dev:electron": "esbuild electron/main.ts electron/preload.ts --bundle --platform=node --external:electron --outdir=electron-dist && electron .",
     "build:electron": "esbuild electron/main.ts electron/preload.ts --bundle --platform=node --external:electron --outdir=electron-dist",
-    "dist": "npm run build && npm run build:electron && electron-builder"
+    "dist": "npm run build && npm run build:electron && electron-builder",
+    "setup:whisper": "bash scripts/setup-whisper.sh"
   },
   "dependencies": {
     "electron-serve": "^2.1.1",
@@ -39,6 +40,13 @@
     "files": [
       "electron-dist/**/*",
       "out/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/bin/",
+        "to": "bin/",
+        "filter": ["whisper-cli"]
+      }
     ],
     "mac": {
       "icon": "icon.icns",

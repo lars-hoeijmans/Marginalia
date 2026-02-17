@@ -4,6 +4,7 @@ import fs from "node:fs";
 import { execFile } from "node:child_process";
 import serve from "electron-serve";
 import { parseFile } from "./import-parsers";
+import { getInstalledModel, downloadModel, transcribe } from "./whisper";
 
 const isProd = app.isPackaged;
 
@@ -59,6 +60,10 @@ function buildMenu() {
           label: "Import from Apple Notes",
           click: handleOpenAppleNotesModal,
         },
+        {
+          label: "Import from audio",
+          click: handleImportFromAudio,
+        },
         { type: "separator" },
         { role: "close" },
       ],
@@ -108,6 +113,50 @@ function handleOpenAppleNotesModal() {
   if (!mainWindow) return;
   mainWindow.webContents.send("open-apple-notes-modal");
 }
+
+function handleImportFromAudio() {
+  if (!mainWindow) return;
+  const model = getInstalledModel();
+  if (model) {
+    mainWindow.webContents.send("pick-and-transcribe-audio");
+  } else {
+    mainWindow.webContents.send("open-whisper-setup");
+  }
+}
+
+// Whisper IPC handlers
+
+ipcMain.handle("whisper-model-status", () => {
+  return getInstalledModel();
+});
+
+ipcMain.handle("download-whisper-model", async (_event, filename: string) => {
+  if (!mainWindow) throw new Error("No window available");
+  await downloadModel(filename, mainWindow);
+});
+
+ipcMain.handle("pick-audio-file", async () => {
+  if (!mainWindow) return null;
+
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: "Import audio",
+    filters: [
+      {
+        name: "Audio files",
+        extensions: ["mp3", "m4a", "wav", "ogg", "webm", "flac"],
+      },
+    ],
+    properties: ["openFile"],
+  });
+
+  if (result.canceled || result.filePaths.length === 0) return null;
+  return result.filePaths[0];
+});
+
+ipcMain.handle("transcribe-audio", async (_event, filePath: string) => {
+  if (!mainWindow) throw new Error("No window available");
+  return transcribe(filePath, mainWindow);
+});
 
 // Apple Notes IPC handlers
 
