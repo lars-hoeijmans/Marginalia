@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Note } from "@/lib/types";
+import { Note, stripHtml } from "@/lib/types";
 
 interface ExportMenuProps {
   note: Note;
@@ -45,13 +45,26 @@ export default function ExportMenu({ note }: ExportMenuProps) {
   const filename = sanitizeFilename(note.title);
 
   const exportTxt = () => {
-    const content = `${note.title}\n\n${note.body}`;
+    const content = `${note.title}\n\n${stripHtml(note.body)}`;
     downloadBlob(content, `${filename}.txt`, "text/plain");
     close();
   };
 
   const exportMd = () => {
-    const content = `# ${note.title}\n\n${note.body}`;
+    const bodyMd = note.body
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/(div|p)>/gi, "\n")
+      .replace(/<(b|strong)>(.*?)<\/(b|strong)>/gi, "**$2**")
+      .replace(/<(i|em)>(.*?)<\/(i|em)>/gi, "*$2*")
+      .replace(/<\/?u>/gi, "")
+      .replace(/<[^>]*>/g, "")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&nbsp;/g, " ")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+    const content = `# ${note.title}\n\n${bodyMd}`;
     downloadBlob(content, `${filename}.md`, "text/markdown");
     close();
   };

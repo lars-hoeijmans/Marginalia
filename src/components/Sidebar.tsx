@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { AnimatePresence, motion, Reorder } from "framer-motion";
-import { Note, relativeTime } from "@/lib/types";
+import { Note, relativeTime, stripHtml } from "@/lib/types";
 
 interface SidebarProps {
   notes: Note[];
@@ -44,7 +44,7 @@ function NoteCard({ note, isSelected, onSelect, onTogglePin }: NoteCardProps) {
           {note.title || "Untitled"}
         </p>
         <p className="text-xs text-ink-muted mt-1 line-clamp-2 leading-relaxed">
-          {note.body || "Empty note"}
+          {stripHtml(note.body) || "Empty note"}
         </p>
         <p className="text-[10px] text-ink-muted/50 mt-1.5">
           {relativeTime(note.updatedAt)}
@@ -135,25 +135,6 @@ export default function Sidebar({
           <h1 className="font-hand text-3xl text-ink tracking-wide">
             Marginalia
           </h1>
-          <motion.span
-            className="text-accent"
-            animate={{ rotate: [0, 8, -4, 0] }}
-            transition={{ delay: 0.6, duration: 0.6 }}
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </motion.span>
 
           {/* Theme toggle */}
           <button
@@ -398,9 +379,10 @@ export default function Sidebar({
             viewBox="0 0 24 24"
           >
             <path
-              d="M12 5v14M5 12h14"
-              strokeWidth="2"
+              d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"
+              strokeWidth="1.5"
               strokeLinecap="round"
+              strokeLinejoin="round"
             />
           </svg>
           New Note

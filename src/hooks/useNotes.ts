@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { Note } from "@/lib/types";
+import { Note, stripHtml } from "@/lib/types";
 
 const STORAGE_KEY = "marginalia-notes";
 const SAVE_DELAY = 600;
@@ -89,7 +89,7 @@ export function useNotes() {
       ? notes.filter(
           (n) =>
             n.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            n.body.toLowerCase().includes(searchQuery.toLowerCase())
+            stripHtml(n.body).toLowerCase().includes(searchQuery.toLowerCase())
         )
       : notes;
 

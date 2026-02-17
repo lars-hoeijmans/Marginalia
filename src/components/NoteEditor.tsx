@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Note, relativeTime } from "@/lib/types";
+import { Note, relativeTime, stripHtml, plainTextToHtml } from "@/lib/types";
 import ExportMenu from "./ExportMenu";
 
 interface NoteEditorProps {
@@ -22,34 +22,87 @@ export default function NoteEditor({
   isSaving,
 }: NoteEditorProps) {
   const titleRef = useRef<HTMLInputElement>(null);
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
 
-  const adjustHeight = useCallback(() => {
-    const textarea = bodyRef.current;
-    if (textarea) {
-      textarea.style.height = "auto";
-      textarea.style.height = textarea.scrollHeight + "px";
+  // Set body content when switching notes (not on every keystroke)
+  useLayoutEffect(() => {
+    if (bodyRef.current) {
+      bodyRef.current.innerHTML = plainTextToHtml(note.body);
     }
-  }, []);
-
-  // Auto-grow on content change
-  useEffect(() => {
-    adjustHeight();
-  }, [note.body, adjustHeight]);
-
-  // Auto-grow on mount (handles initial content)
-  useEffect(() => {
-    requestAnimationFrame(adjustHeight);
-  }, [note.id, adjustHeight]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [note.id]);
 
   // Focus title on new empty notes
   useEffect(() => {
     if (!note.title && !note.body) {
       setTimeout(() => titleRef.current?.focus(), 300);
     }
-    // Only run on note switch
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note.id]);
+
+  const handleBodyInput = useCallback(() => {
+    if (!bodyRef.current) return;
+    onUpdate(note.id, { body: bodyRef.current.innerHTML });
+  }, [note.id, onUpdate]);
+
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      const html = e.clipboardData.getData("text/html");
+      const plain = e.clipboardData.getData("text/plain");
+
+      if (html) {
+        // Parse and sanitize: keep only b, strong, i, em, u, br, div, p
+        const doc = new DOMParser().parseFromString(html, "text/html");
+        const allowed = new Set(["b", "strong", "i", "em", "u", "br", "div", "p"]);
+
+        function sanitize(node: Node): DocumentFragment {
+          const frag = document.createDocumentFragment();
+          for (const child of Array.from(node.childNodes)) {
+            if (child.nodeType === Node.TEXT_NODE) {
+              frag.appendChild(document.createTextNode(child.textContent || ""));
+            } else if (child.nodeType === Node.ELEMENT_NODE) {
+              const el = child as Element;
+              const tag = el.tagName.toLowerCase();
+              if (allowed.has(tag)) {
+                const clean = document.createElement(tag);
+                clean.appendChild(sanitize(el));
+                frag.appendChild(clean);
+              } else {
+                frag.appendChild(sanitize(el));
+              }
+            }
+          }
+          return frag;
+        }
+
+        const sanitized = sanitize(doc.body);
+        const wrapper = document.createElement("div");
+        wrapper.appendChild(sanitized);
+        document.execCommand("insertHTML", false, wrapper.innerHTML);
+      } else {
+        document.execCommand("insertText", false, plain);
+      }
+    },
+    []
+  );
+
+  const handleBodyKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      if (e.key === "b") {
+        e.preventDefault();
+        document.execCommand("bold");
+      } else if (e.key === "i") {
+        e.preventDefault();
+        document.execCommand("italic");
+      } else if (e.key === "u") {
+        e.preventDefault();
+        document.execCommand("underline");
+      }
+    },
+    []
+  );
 
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -60,9 +113,9 @@ export default function NoteEditor({
     return () => clearTimeout(timer);
   }, [confirmDelete]);
 
-  const wordCount = note.body.trim()
-    ? note.body.trim().split(/\s+/).length
-    : 0;
+  const plainBody = stripHtml(note.body).trim();
+  const wordCount = plainBody ? plainBody.split(/\s+/).length : 0;
+  const isEmpty = !plainBody;
 
   return (
     <motion.div
@@ -183,16 +236,20 @@ export default function NoteEditor({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
+            className="relative"
           >
-            <textarea
+            {isEmpty && (
+              <span className="absolute top-0 left-0 font-body text-lg text-ink-muted/30 pointer-events-none select-none">
+                Start writing&#8230;
+              </span>
+            )}
+            <div
               ref={bodyRef}
-              value={note.body}
-              onChange={(e) => {
-                onUpdate(note.id, { body: e.target.value });
-                adjustHeight();
-              }}
-              placeholder="Start writing&#8230;"
-              className="w-full font-body text-lg leading-[32px] text-ink placeholder:text-ink-muted/30 bg-transparent border-none outline-none resize-none min-h-[50vh]"
+              contentEditable
+              onKeyDown={handleBodyKeyDown}
+              onPaste={handlePaste}
+              onInput={handleBodyInput}
+              className="w-full font-body text-lg leading-[32px] text-ink bg-transparent border-none outline-none min-h-[50vh]"
             />
           </motion.div>
         </div>
