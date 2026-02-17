@@ -1,5 +1,23 @@
 import type { Note } from "./types";
 
+type QuickCapturePosition =
+  | "top-left"
+  | "top-center"
+  | "top-right"
+  | "center-left"
+  | "center"
+  | "center-right"
+  | "bottom-left"
+  | "bottom-center"
+  | "bottom-right";
+
+interface AppSettings {
+  quickCapture: {
+    enabled: boolean;
+    position: QuickCapturePosition;
+  };
+}
+
 interface AppleNoteEntry {
   id: string;
   name: string;
@@ -54,6 +72,12 @@ interface ElectronAPI {
   ) => () => void;
   onOpenWhisperSetup: (callback: () => void) => () => void;
   onPickAndTranscribeAudio: (callback: () => void) => () => void;
+  quickCaptureSave: (payload: { title: string; body: string }) => Promise<void>;
+  quickCaptureDismiss: () => Promise<void>;
+  onQuickCaptureReset: (callback: () => void) => () => void;
+  onNotesChangedExternally: (callback: () => void) => () => void;
+  loadSettings: () => Promise<AppSettings>;
+  saveSettings: (settings: AppSettings) => Promise<void>;
 }
 
 declare global {
@@ -63,8 +87,10 @@ declare global {
 }
 
 export type {
+  AppSettings,
   AppleNoteEntry,
   ElectronAPI,
+  QuickCapturePosition,
   WhisperDownloadProgress,
   WhisperModelInfo,
 };

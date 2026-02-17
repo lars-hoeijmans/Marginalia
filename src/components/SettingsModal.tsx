@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import type { WhisperModelInfo } from "@/lib/electron";
+import type { AppSettings, QuickCapturePosition, WhisperModelInfo } from "@/lib/electron";
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -14,6 +14,47 @@ interface DownloadProgress {
   totalMB: number;
 }
 
+const POSITIONS: QuickCapturePosition[] = [
+  "top-left",    "top-center",    "top-right",
+  "center-left", "center",        "center-right",
+  "bottom-left", "bottom-center", "bottom-right",
+];
+
+interface PositionPickerProps {
+  value: QuickCapturePosition;
+  disabled: boolean;
+  onChange: (position: QuickCapturePosition) => void;
+}
+
+function PositionPicker({ value, disabled, onChange }: PositionPickerProps) {
+  return (
+    <div
+      className={`relative w-[160px] h-[100px] rounded-lg border border-edge bg-surface-hover/40 transition-opacity ${
+        disabled ? "opacity-40 pointer-events-none" : ""
+      }`}
+    >
+      <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 place-items-center p-3">
+        {POSITIONS.map((pos) => {
+          const selected = pos === value;
+          return (
+            <button
+              key={pos}
+              type="button"
+              aria-label={pos.replace("-", " ")}
+              onClick={() => onChange(pos)}
+              className={`w-3 h-3 rounded-full transition-all cursor-pointer ${
+                selected
+                  ? "bg-accent scale-125"
+                  : "border-2 border-ink-muted/30 hover:border-ink-muted/60"
+              }`}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function SettingsModal({ onClose }: SettingsModalProps) {
   const [models, setModels] = useState<WhisperModelInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,9 +62,13 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
   const [progress, setProgress] = useState<DownloadProgress | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [settings, setSettings] = useState<AppSettings>({
+    quickCapture: { enabled: true, position: "bottom-right" },
+  });
 
   useEffect(() => {
     if (!window.electron) return;
+    window.electron.loadSettings().then(setSettings);
     window.electron.getWhisperModels().then((m) => {
       setModels(m);
       setLoading(false);
@@ -85,6 +130,11 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
     setModels(updated);
   }, []);
 
+  const updateSettings = useCallback((next: AppSettings) => {
+    setSettings(next);
+    window.electron?.saveSettings(next);
+  }, []);
+
   // Clear delete confirmation when clicking elsewhere
   const clearConfirm = useCallback(() => setConfirmingDelete(null), []);
 
@@ -136,7 +186,52 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
         </div>
 
         {/* Content */}
-        <div className="px-5 py-4 space-y-4">
+        <div className="px-5 py-4 space-y-6 max-h-[70vh] overflow-y-auto">
+          {/* Quick Note section */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-ink-muted uppercase tracking-wide">
+                Quick Note
+              </p>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={settings.quickCapture.enabled}
+                onClick={() =>
+                  updateSettings({
+                    ...settings,
+                    quickCapture: {
+                      ...settings.quickCapture,
+                      enabled: !settings.quickCapture.enabled,
+                    },
+                  })
+                }
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${
+                  settings.quickCapture.enabled ? "bg-accent" : "bg-edge"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition-transform mt-0.5 ${
+                    settings.quickCapture.enabled ? "translate-x-[18px]" : "translate-x-0.5"
+                  }`}
+                />
+              </button>
+            </div>
+
+            <PositionPicker
+              value={settings.quickCapture.position}
+              disabled={!settings.quickCapture.enabled}
+              onChange={(position) =>
+                updateSettings({
+                  ...settings,
+                  quickCapture: { ...settings.quickCapture, position },
+                })
+              }
+            />
+          </div>
+
+          <hr className="border-edge-light" />
+
           <p className="text-xs font-medium text-ink-muted uppercase tracking-wide">
             Transcription models
           </p>

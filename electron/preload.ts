@@ -107,4 +107,30 @@ contextBridge.exposeInMainWorld("electron", {
       ipcRenderer.removeListener("pick-and-transcribe-audio", handler);
     };
   },
+
+  quickCaptureSave: (payload: { title: string; body: string }) =>
+    ipcRenderer.invoke("quick-capture-save", payload),
+
+  quickCaptureDismiss: () => ipcRenderer.invoke("quick-capture-dismiss"),
+
+  onQuickCaptureReset: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on("quick-capture-reset", handler);
+    return () => {
+      ipcRenderer.removeListener("quick-capture-reset", handler);
+    };
+  },
+
+  onNotesChangedExternally: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on("notes-changed-externally", handler);
+    return () => {
+      ipcRenderer.removeListener("notes-changed-externally", handler);
+    };
+  },
+
+  loadSettings: () => ipcRenderer.invoke("load-settings"),
+
+  saveSettings: (settings: Record<string, unknown>) =>
+    ipcRenderer.invoke("save-settings", settings),
 });

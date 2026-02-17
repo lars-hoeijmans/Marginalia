@@ -100,6 +100,22 @@ export function useNotes() {
     };
   }, []);
 
+  // Reload notes when quick-capture saves externally
+  const loadNotes = useCallback(async () => {
+    if (!window.electron) return;
+    const loaded = await window.electron.loadNotes();
+    if (loaded) {
+      setNotes(loaded);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!window.electron?.onNotesChangedExternally) return;
+    return window.electron.onNotesChangedExternally(() => {
+      loadNotes();
+    });
+  }, [loadNotes]);
+
   const persist = useCallback((updated: Note[]) => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     setIsSaving(true);
