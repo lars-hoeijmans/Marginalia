@@ -12,6 +12,16 @@ interface WhisperDownloadProgress {
   totalMB: number;
 }
 
+interface WhisperModelInfo {
+  filename: string;
+  label: string;
+  size: string;
+  description: string;
+  recommended: boolean;
+  installed: boolean;
+  selected: boolean;
+}
+
 interface ElectronAPI {
   listAppleNotes: () => Promise<AppleNoteEntry[]>;
   getAppleNoteBodies: (
@@ -23,6 +33,10 @@ interface ElectronAPI {
   onOpenAppleNotesModal: (callback: () => void) => () => void;
   whisperModelStatus: () => Promise<string | null>;
   downloadWhisperModel: (filename: string) => Promise<void>;
+  getWhisperModels: () => Promise<WhisperModelInfo[]>;
+  deleteWhisperModel: (filename: string) => Promise<WhisperModelInfo[]>;
+  setWhisperModel: (filename: string) => Promise<WhisperModelInfo[]>;
+  onOpenSettings: (callback: () => void) => () => void;
   pickAudioFile: () => Promise<string | null>;
   transcribeAudio: (
     filePath: string
@@ -40,4 +54,9 @@ declare global {
   }
 }
 
-export type { AppleNoteEntry, ElectronAPI, WhisperDownloadProgress };
+export type {
+  AppleNoteEntry,
+  ElectronAPI,
+  WhisperDownloadProgress,
+  WhisperModelInfo,
+};

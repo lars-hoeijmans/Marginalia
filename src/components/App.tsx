@@ -10,6 +10,7 @@ import EmptyState from "./EmptyState";
 import UndoToast from "./UndoToast";
 import AppleNotesModal from "./AppleNotesModal";
 import WhisperSetupModal from "./WhisperSetupModal";
+import SettingsModal from "./SettingsModal";
 import TranscriptionProgress from "./TranscriptionProgress";
 
 export default function App() {
@@ -38,10 +39,12 @@ export default function App() {
 
   const [appleNotesOpen, setAppleNotesOpen] = useState(false);
   const [whisperSetupOpen, setWhisperSetupOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
 
   const closeAppleNotes = useCallback(() => setAppleNotesOpen(false), []);
   const closeWhisperSetup = useCallback(() => setWhisperSetupOpen(false), []);
+  const closeSettings = useCallback(() => setSettingsOpen(false), []);
 
   const pickAndTranscribe = useCallback(async () => {
     if (!window.electron) return;
@@ -76,6 +79,10 @@ export default function App() {
       setWhisperSetupOpen(true);
     });
 
+    const removeOpenSettings = window.electron.onOpenSettings(() => {
+      setSettingsOpen(true);
+    });
+
     const removePickAndTranscribe = window.electron.onPickAndTranscribeAudio(() => {
       pickAndTranscribe();
     });
@@ -84,6 +91,7 @@ export default function App() {
       removeImport();
       removeModal();
       removeWhisperSetup();
+      removeOpenSettings();
       removePickAndTranscribe();
     };
   }, [importNotes, pickAndTranscribe]);
@@ -145,7 +153,7 @@ export default function App() {
         onReorderNotes={reorderNotes}
       />
 
-      <main className="flex-1 overflow-hidden">
+      <main className="relative flex-1 overflow-hidden">
         <AnimatePresence mode="wait">
           {selectedNote ? (
             <NoteEditor
@@ -163,18 +171,22 @@ export default function App() {
             />
           )}
         </AnimatePresence>
-      </main>
 
-      <AnimatePresence>
-        {pendingDelete && (
-          <UndoToast
-            key={pendingDelete.note.id}
-            noteTitle={pendingDelete.note.title}
-            onUndo={undoDelete}
-            onDismiss={dismissDelete}
-          />
-        )}
-      </AnimatePresence>
+        <AnimatePresence>
+          {pendingDelete && (
+            <UndoToast
+              key={pendingDelete.note.id}
+              noteTitle={pendingDelete.note.title}
+              onUndo={undoDelete}
+              onDismiss={dismissDelete}
+            />
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {transcribing && <TranscriptionProgress key="transcription" />}
+        </AnimatePresence>
+      </main>
 
       <AnimatePresence>
         {appleNotesOpen && (
@@ -183,6 +195,12 @@ export default function App() {
             onImport={importNotes}
             onClose={closeAppleNotes}
           />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {settingsOpen && (
+          <SettingsModal key="settings" onClose={closeSettings} />
         )}
       </AnimatePresence>
 
@@ -199,9 +217,6 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {transcribing && <TranscriptionProgress key="transcription" />}
-      </AnimatePresence>
     </div>
   );
 }

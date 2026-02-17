@@ -25,7 +25,7 @@ const MODELS = [
     label: "Large (Turbo)",
     size: "~574 MB",
     description:
-      "Near-perfect accuracy, optimized for Apple Silicon. Best for accented speech, background noise, and multiple languages.",
+      "Near-perfect accuracy, optimized for Apple Silicon. Best for non-English languages, accented speech, and background noise.",
     recommended: true,
   },
   {

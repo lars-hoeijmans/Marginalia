@@ -52,6 +52,22 @@ contextBridge.exposeInMainWorld("electron", {
     };
   },
 
+  getWhisperModels: () => ipcRenderer.invoke("get-whisper-models"),
+
+  deleteWhisperModel: (filename: string) =>
+    ipcRenderer.invoke("delete-whisper-model", filename),
+
+  setWhisperModel: (filename: string) =>
+    ipcRenderer.invoke("set-whisper-model", filename),
+
+  onOpenSettings: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on("open-settings", handler);
+    return () => {
+      ipcRenderer.removeListener("open-settings", handler);
+    };
+  },
+
   onOpenWhisperSetup: (callback: () => void) => {
     const handler = () => callback();
     ipcRenderer.on("open-whisper-setup", handler);

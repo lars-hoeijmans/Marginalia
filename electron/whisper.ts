@@ -6,12 +6,60 @@ import { execFile } from "node:child_process";
 import os from "node:os";
 
 const MODEL_DIR_NAME = "models";
-const MODELS = [
-  "ggml-large-v3-turbo-q5_0.bin",
-  "ggml-base-q5_1.bin",
-] as const;
+const PREFS_FILENAME = "whisper-prefs.json";
 
-type ModelFilename = (typeof MODELS)[number];
+export interface ModelCatalogEntry {
+  filename: string;
+  label: string;
+  size: string;
+  description: string;
+  recommended: boolean;
+}
+
+export interface WhisperModelInfo extends ModelCatalogEntry {
+  installed: boolean;
+  selected: boolean;
+}
+
+export const MODEL_CATALOG: ModelCatalogEntry[] = [
+  {
+    filename: "ggml-large-v3-turbo-q5_0.bin",
+    label: "Large (Turbo)",
+    size: "~574 MB",
+    description:
+      "Near-perfect accuracy, optimized for Apple Silicon. Best for non-English languages, accented speech, and background noise.",
+    recommended: true,
+  },
+  {
+    filename: "ggml-base-q5_1.bin",
+    label: "Base",
+    size: "~60 MB",
+    description:
+      "Good accuracy for clear speech in quiet environments. Faster download, lighter on disk.",
+    recommended: false,
+  },
+];
+
+interface WhisperPrefs {
+  selectedModel?: string;
+}
+
+function getPrefsPath(): string {
+  return path.join(app.getPath("userData"), PREFS_FILENAME);
+}
+
+function readPrefs(): WhisperPrefs {
+  try {
+    const raw = fs.readFileSync(getPrefsPath(), "utf-8");
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+function writePrefs(prefs: WhisperPrefs): void {
+  fs.writeFileSync(getPrefsPath(), JSON.stringify(prefs, null, 2));
+}
 
 function getModelDir(): string {
   const dir = path.join(app.getPath("userData"), MODEL_DIR_NAME);
@@ -28,15 +76,54 @@ function getWhisperBinary(): string {
   return path.join(__dirname, "..", "resources", "bin", "whisper-cli");
 }
 
-export function getInstalledModel(): string | null {
+function getInstalledModels(): string[] {
   const dir = getModelDir();
-  for (const model of MODELS) {
-    const modelPath = path.join(dir, model);
-    if (fs.existsSync(modelPath)) {
-      return model;
-    }
+  return MODEL_CATALOG
+    .map((m) => m.filename)
+    .filter((filename) => fs.existsSync(path.join(dir, filename)));
+}
+
+export function getInstalledModel(): string | null {
+  const installed = getInstalledModels();
+  if (installed.length === 0) return null;
+
+  const prefs = readPrefs();
+  if (prefs.selectedModel && installed.includes(prefs.selectedModel)) {
+    return prefs.selectedModel;
   }
-  return null;
+
+  return installed[0];
+}
+
+export function getModelsWithStatus(): WhisperModelInfo[] {
+  const installed = getInstalledModels();
+  const effective = getInstalledModel();
+
+  return MODEL_CATALOG.map((entry) => ({
+    ...entry,
+    installed: installed.includes(entry.filename),
+    selected: entry.filename === effective,
+  }));
+}
+
+export function deleteModel(filename: string): WhisperModelInfo[] {
+  const modelPath = path.join(getModelDir(), filename);
+  if (fs.existsSync(modelPath)) {
+    fs.unlinkSync(modelPath);
+  }
+
+  const prefs = readPrefs();
+  if (prefs.selectedModel === filename) {
+    delete prefs.selectedModel;
+    writePrefs(prefs);
+  }
+
+  return getModelsWithStatus();
+}
+
+export function setSelectedModel(filename: string): WhisperModelInfo[] {
+  writePrefs({ selectedModel: filename });
+  return getModelsWithStatus();
 }
 
 export function downloadModel(

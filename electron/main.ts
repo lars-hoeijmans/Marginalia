@@ -4,7 +4,14 @@ import fs from "node:fs";
 import { execFile } from "node:child_process";
 import serve from "electron-serve";
 import { parseFile } from "./import-parsers";
-import { getInstalledModel, downloadModel, transcribe } from "./whisper";
+import {
+  getInstalledModel,
+  downloadModel,
+  transcribe,
+  getModelsWithStatus,
+  deleteModel,
+  setSelectedModel,
+} from "./whisper";
 
 const isProd = app.isPackaged;
 
@@ -45,9 +52,33 @@ function createWindow() {
   }
 }
 
+function handleOpenSettings() {
+  if (!mainWindow) return;
+  mainWindow.webContents.send("open-settings");
+}
+
 function buildMenu() {
   const template: Electron.MenuItemConstructorOptions[] = [
-    { role: "appMenu" },
+    {
+      label: app.name,
+      submenu: [
+        { role: "about" },
+        { type: "separator" },
+        {
+          label: "Settings\u2026",
+          accelerator: "CmdOrCtrl+,",
+          click: handleOpenSettings,
+        },
+        { type: "separator" },
+        { role: "services" },
+        { type: "separator" },
+        { role: "hide" },
+        { role: "hideOthers" },
+        { role: "unhide" },
+        { type: "separator" },
+        { role: "quit" },
+      ],
+    },
     {
       label: "File",
       submenu: [
@@ -133,6 +164,18 @@ ipcMain.handle("whisper-model-status", () => {
 ipcMain.handle("download-whisper-model", async (_event, filename: string) => {
   if (!mainWindow) throw new Error("No window available");
   await downloadModel(filename, mainWindow);
+});
+
+ipcMain.handle("get-whisper-models", () => {
+  return getModelsWithStatus();
+});
+
+ipcMain.handle("delete-whisper-model", (_event, filename: string) => {
+  return deleteModel(filename);
+});
+
+ipcMain.handle("set-whisper-model", (_event, filename: string) => {
+  return setSelectedModel(filename);
 });
 
 ipcMain.handle("pick-audio-file", async () => {
