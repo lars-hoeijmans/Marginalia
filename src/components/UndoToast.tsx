@@ -18,52 +18,40 @@ export default function UndoToast({
 
   return (
     <motion.div
-      initial={{ y: 60, opacity: 0 }}
+      initial={{ y: 40, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      exit={{ y: 20, opacity: 0 }}
-      transition={{ type: "spring", stiffness: 400, damping: 28 }}
-      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-ink text-bg px-4 py-3 rounded-xl shadow-lg overflow-hidden min-w-[280px]"
+      exit={{ y: 16, opacity: 0 }}
+      transition={{ type: "spring", stiffness: 300, damping: 26 }}
+      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-surface border border-edge px-5 py-3 rounded-xl shadow-sm overflow-hidden min-w-[260px]"
     >
-      {/* Trash icon */}
-      <svg
-        className="w-4 h-4 shrink-0 opacity-60"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-
-      <span className="text-sm flex-1 truncate">
-        Deleted &ldquo;{displayTitle || "Untitled"}&rdquo;
+      <span className="text-sm text-ink-muted flex-1 truncate">
+        <span className="font-hand text-base text-ink">
+          {displayTitle || "Untitled"}
+        </span>
+        {" \u2003"}deleted
       </span>
 
       <button
         onClick={onUndo}
-        className="text-sm font-semibold text-accent hover:text-accent-hover transition-colors cursor-pointer shrink-0"
+        className="text-sm text-accent hover:text-accent-hover transition-colors cursor-pointer shrink-0"
       >
         Undo
       </button>
 
       <button
         onClick={onDismiss}
-        className="opacity-50 hover:opacity-100 transition-opacity cursor-pointer shrink-0"
+        className="text-ink-muted/40 hover:text-ink-muted transition-colors cursor-pointer shrink-0"
         aria-label="Dismiss"
       >
         <svg
-          className="w-3.5 h-3.5"
+          className="w-3 h-3"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
         >
           <path
             d="M6 18L18 6M6 6l12 12"
-            strokeWidth="2"
+            strokeWidth="2.5"
             strokeLinecap="round"
           />
         </svg>
@@ -71,7 +59,7 @@ export default function UndoToast({
 
       {/* Progress bar */}
       <motion.div
-        className="absolute bottom-0 left-0 h-0.5 bg-accent/60"
+        className="absolute bottom-0 left-0 h-px bg-edge"
         initial={{ width: "100%" }}
         animate={{ width: "0%" }}
         transition={{ duration: 7, ease: "linear" }}

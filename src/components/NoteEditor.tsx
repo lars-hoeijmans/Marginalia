@@ -134,6 +134,7 @@ export default function NoteEditor({
               type="text"
               value={note.title}
               onChange={(e) => onUpdate(note.id, { title: e.target.value })}
+              maxLength={40}
               placeholder="Untitled"
               className="w-full font-hand text-5xl text-ink placeholder:text-ink-muted/30 bg-transparent border-none outline-none tracking-wide peer"
             />

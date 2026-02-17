@@ -17,15 +17,7 @@ export default function EmptyState({ onCreateNote, hasNotes }: EmptyStateProps) 
       className="h-full flex items-center justify-center"
     >
       <div className="text-center max-w-sm px-6">
-        <motion.div
-          animate={{ y: [0, -6, 0] }}
-          transition={{
-            duration: 3,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-          className="mb-8 inline-block"
-        >
+        <div className="mb-8 inline-block">
           <svg
             className="w-16 h-16 text-ink-muted/40"
             fill="none"
@@ -39,7 +31,7 @@ export default function EmptyState({ onCreateNote, hasNotes }: EmptyStateProps) 
               strokeLinejoin="round"
             />
           </svg>
-        </motion.div>
+        </div>
 
         <motion.h2
           initial={{ opacity: 0, y: 10 }}
