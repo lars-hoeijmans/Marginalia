@@ -23,6 +23,7 @@ interface WhisperModelInfo {
 }
 
 interface ElectronAPI {
+  importTextFiles: () => Promise<Array<{ title: string; body: string }>>;
   listAppleNotes: () => Promise<AppleNoteEntry[]>;
   getAppleNoteBodies: (
     ids: string[]
@@ -36,6 +37,7 @@ interface ElectronAPI {
   getWhisperModels: () => Promise<WhisperModelInfo[]>;
   deleteWhisperModel: (filename: string) => Promise<WhisperModelInfo[]>;
   setWhisperModel: (filename: string) => Promise<WhisperModelInfo[]>;
+  onOpenOnboarding: (callback: () => void) => () => void;
   onOpenSettings: (callback: () => void) => () => void;
   pickAudioFile: () => Promise<string | null>;
   transcribeAudio: (

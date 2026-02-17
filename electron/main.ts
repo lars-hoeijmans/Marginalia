@@ -104,7 +104,17 @@ function buildMenu() {
     { role: "windowMenu" },
     {
       role: "help",
-      submenu: [{ role: "toggleDevTools" }],
+      submenu: [
+        {
+          label: "Welcome to Marginalia",
+          click: () => {
+            if (!mainWindow) return;
+            mainWindow.webContents.send("open-onboarding");
+          },
+        },
+        { type: "separator" },
+        { role: "toggleDevTools" },
+      ],
     },
   ];
 
@@ -154,6 +164,34 @@ function handleImportFromAudio() {
     mainWindow.webContents.send("open-whisper-setup");
   }
 }
+
+// Import text files IPC handler
+
+ipcMain.handle("import-text-files", async () => {
+  if (!mainWindow) return [];
+
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: "Import notes",
+    filters: [{ name: "Text files", extensions: ["txt", "md"] }],
+    properties: ["openFile", "multiSelections"],
+  });
+
+  if (result.canceled || result.filePaths.length === 0) return [];
+
+  const notes: Array<{ title: string; body: string }> = [];
+
+  for (const filePath of result.filePaths) {
+    try {
+      const content = fs.readFileSync(filePath, "utf-8");
+      const filename = path.basename(filePath);
+      notes.push(parseFile(filename, content));
+    } catch {
+      // Skip files that can't be read
+    }
+  }
+
+  return notes;
+});
 
 // Whisper IPC handlers
 

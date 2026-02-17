@@ -12,6 +12,7 @@ import AppleNotesModal from "./AppleNotesModal";
 import WhisperSetupModal from "./WhisperSetupModal";
 import SettingsModal from "./SettingsModal";
 import TranscriptionProgress from "./TranscriptionProgress";
+import OnboardingModal from "./OnboardingModal";
 
 export default function App() {
   const {
@@ -41,10 +42,17 @@ export default function App() {
   const [whisperSetupOpen, setWhisperSetupOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(
+    () => typeof window !== "undefined" && !localStorage.getItem("marginalia-onboarding-seen")
+  );
 
   const closeAppleNotes = useCallback(() => setAppleNotesOpen(false), []);
   const closeWhisperSetup = useCallback(() => setWhisperSetupOpen(false), []);
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
+  const closeOnboarding = useCallback(() => {
+    localStorage.setItem("marginalia-onboarding-seen", "1");
+    setOnboardingOpen(false);
+  }, []);
 
   const pickAndTranscribe = useCallback(async () => {
     if (!window.electron) return;
@@ -87,12 +95,17 @@ export default function App() {
       pickAndTranscribe();
     });
 
+    const removeOpenOnboarding = window.electron.onOpenOnboarding(() => {
+      setOnboardingOpen(true);
+    });
+
     return () => {
       removeImport();
       removeModal();
       removeWhisperSetup();
       removeOpenSettings();
       removePickAndTranscribe();
+      removeOpenOnboarding();
     };
   }, [importNotes, pickAndTranscribe]);
 
@@ -213,6 +226,17 @@ export default function App() {
               pickAndTranscribe();
             }}
             onClose={closeWhisperSetup}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {onboardingOpen && (
+          <OnboardingModal
+            key="onboarding"
+            onImport={importNotes}
+            onOpenAppleNotes={() => setAppleNotesOpen(true)}
+            onClose={closeOnboarding}
           />
         )}
       </AnimatePresence>

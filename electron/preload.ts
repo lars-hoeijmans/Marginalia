@@ -1,6 +1,8 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("electron", {
+  importTextFiles: () => ipcRenderer.invoke("import-text-files"),
+
   listAppleNotes: () => ipcRenderer.invoke("list-apple-notes"),
 
   getAppleNoteBodies: (ids: string[]) =>
@@ -59,6 +61,14 @@ contextBridge.exposeInMainWorld("electron", {
 
   setWhisperModel: (filename: string) =>
     ipcRenderer.invoke("set-whisper-model", filename),
+
+  onOpenOnboarding: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on("open-onboarding", handler);
+    return () => {
+      ipcRenderer.removeListener("open-onboarding", handler);
+    };
+  },
 
   onOpenSettings: (callback: () => void) => {
     const handler = () => callback();
