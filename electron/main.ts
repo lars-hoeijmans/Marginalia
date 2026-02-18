@@ -151,10 +151,14 @@ function createQuickCaptureWindow() {
   });
 
   win.on("close", (e) => {
-    if (!isQuitting) {
+    if (!isQuitting && currentSettings.quickCapture.enabled) {
       e.preventDefault();
       win.hide();
     }
+  });
+
+  win.on("closed", () => {
+    quickCaptureWindow = null;
   });
 
   quickCaptureWindow = win;
@@ -495,6 +499,7 @@ ipcMain.handle("load-settings", () => {
 });
 
 ipcMain.handle("save-settings", async (_event, settings: AppSettings) => {
+  const wasEnabled = currentSettings.quickCapture.enabled;
   currentSettings = settings;
   const tmp = settingsPath + ".tmp";
   await fs.promises.writeFile(tmp, JSON.stringify(settings, null, 2), "utf-8");
@@ -504,6 +509,13 @@ ipcMain.handle("save-settings", async (_event, settings: AppSettings) => {
   globalShortcut.unregister("CmdOrCtrl+Shift+N");
   if (settings.quickCapture.enabled) {
     globalShortcut.register("CmdOrCtrl+Shift+N", toggleQuickCapture);
+    if (!wasEnabled && !quickCaptureWindow) {
+      createQuickCaptureWindow();
+    }
+  } else if (wasEnabled) {
+    if (quickCaptureWindow && !quickCaptureWindow.isDestroyed()) {
+      quickCaptureWindow.destroy();
+    }
   }
 });
 
@@ -666,9 +678,9 @@ app.whenReady().then(() => {
   buildMenu();
   createTray();
   createWindow();
-  createQuickCaptureWindow();
 
   if (currentSettings.quickCapture.enabled) {
+    createQuickCaptureWindow();
     globalShortcut.register("CmdOrCtrl+Shift+N", toggleQuickCapture);
   }
 });
