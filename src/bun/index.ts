@@ -664,7 +664,7 @@ function handleImportFromAudio() {
 
 function createTray() {
   const tray = new Tray({
-    title: "Marginalia",
+    title: "",
     image: "views://assets/trayIconTemplate.png",
     template: true,
     width: 18,
