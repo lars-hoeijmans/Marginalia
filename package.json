@@ -12,9 +12,12 @@
     "dev:electron": "esbuild electron/main.ts electron/preload.ts --bundle --platform=node --external:electron --outdir=electron-dist && electron .",
     "build:electron": "esbuild electron/main.ts electron/preload.ts --bundle --platform=node --external:electron --outdir=electron-dist",
     "dist": "npm run build && npm run build:electron && electron-builder",
+    "dev:electrobun": "next build && electrobun dev",
+    "dist:electrobun": "next build && electrobun build",
     "setup:whisper": "bash scripts/setup-whisper.sh"
   },
   "dependencies": {
+    "electrobun": "^1.15.1",
     "electron-serve": "^2.1.1"
   },
   "devDependencies": {
