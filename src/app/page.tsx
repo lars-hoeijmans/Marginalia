@@ -1,24 +1,27 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import App from "@/components/App";
 import QuickCapture from "@/components/QuickCapture";
 
 function PageRouter() {
   const params = useSearchParams();
+  const [mode, setMode] = useState<"loading" | "app" | "quick-capture">(
+    "loading"
+  );
 
-  // Electrobun: preload bridge sets __QUICK_CAPTURE__ before page scripts run
-  // Electron: uses ?quick-capture=1 query param
-  const isQC =
-    (typeof window !== "undefined" &&
-      !!(window as unknown as Record<string, unknown>).__QUICK_CAPTURE__) ||
-    params.get("quick-capture") === "1";
+  useEffect(() => {
+    const win = window as unknown as Record<string, unknown>;
+    if (win.__QUICK_CAPTURE__ || params.get("quick-capture") === "1") {
+      setMode("quick-capture");
+    } else {
+      setMode("app");
+    }
+  }, [params]);
 
-  if (isQC) {
-    return <QuickCapture />;
-  }
-
+  if (mode === "loading") return null;
+  if (mode === "quick-capture") return <QuickCapture />;
   return <App />;
 }
 

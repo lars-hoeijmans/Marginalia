@@ -452,14 +452,19 @@ function createQuickCaptureWindow(x: number, y: number) {
   const win = new BrowserWindow({
     title: "Quick Capture",
     frame: { width: 440, height: 220, x, y },
-    titleBarStyle: "hidden",
-    transparent: true,
+    titleBarStyle: "hiddenInset",
+    styleMask: {
+      Closable: false,
+      Miniaturizable: false,
+      Resizable: false,
+    },
     url: getAppUrl(),
     preload: "views://quick-capture-bridge/quick-capture-bridge.js",
     rpc: quickCaptureRpc,
   });
 
   win.setAlwaysOnTop(true);
+  win.focus();
 
   win.on("close", () => {
     quickCaptureWindow = null;
