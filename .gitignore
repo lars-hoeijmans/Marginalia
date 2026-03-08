@@ -46,3 +46,4 @@ next-env.d.ts
 
 # compiled binaries (rebuild with npm run setup:whisper)
 /resources/bin/
+/artifacts

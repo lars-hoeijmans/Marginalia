@@ -68,11 +68,9 @@ export default function QuickCapture() {
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ type: "spring", damping: 28, stiffness: 400 }}
       className="h-screen w-screen"
-      style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
     >
       <div
-        className="h-full rounded-xl bg-surface/80 backdrop-blur-xl shadow-2xl flex flex-col overflow-hidden"
-        style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+        className="h-full rounded-xl bg-surface/80 shadow-2xl backdrop-blur-xl flex flex-col overflow-hidden"
       >
         <div className="px-4 pt-4 pb-2">
           <input
@@ -83,7 +81,7 @@ export default function QuickCapture() {
             maxLength={40}
             placeholder="Note title"
             autoFocus
-            className="w-full font-hand text-2xl text-ink placeholder:text-ink-muted/40 bg-transparent border-none outline-none tracking-wide"
+            className="w-full bg-transparent border-none font-hand text-2xl tracking-wide text-ink outline-none placeholder:text-ink-muted/40"
           />
         </div>
 
@@ -92,7 +90,7 @@ export default function QuickCapture() {
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder="Start writing..."
-            className="w-full h-full font-body text-base text-ink placeholder:text-ink-muted/30 bg-transparent border-none outline-none resize-none leading-relaxed"
+            className="h-full w-full resize-none bg-transparent border-none font-body text-base leading-relaxed text-ink outline-none placeholder:text-ink-muted/30"
           />
         </div>
 
@@ -104,7 +102,7 @@ export default function QuickCapture() {
           <button
             onClick={save}
             disabled={!canSave}
-            className="px-3 py-1 rounded-md bg-accent text-white text-xs font-medium disabled:opacity-30 hover:bg-accent-hover transition-colors"
+            className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-30"
           >
             Save
             <span className="ml-1.5 opacity-70">&#8984;&#9166;</span>

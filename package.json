@@ -1,31 +1,24 @@
 {
   "name": "marginalia",
   "productName": "Marginalia",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "private": true,
-  "main": "electron-dist/main.js",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
     "lint": "eslint",
-    "dev:electron": "esbuild electron/main.ts electron/preload.ts --bundle --platform=node --external:electron --outdir=electron-dist && electron .",
-    "build:electron": "esbuild electron/main.ts electron/preload.ts --bundle --platform=node --external:electron --outdir=electron-dist",
-    "dist": "npm run build && npm run build:electron && electron-builder",
+    "dev:electrobun": "next build && electrobun dev",
+    "dist:electrobun": "next build && electrobun build --env=stable",
     "setup:whisper": "bash scripts/setup-whisper.sh"
   },
   "dependencies": {
-    "electron-serve": "^2.1.1"
+    "electrobun": "^1.15.1"
   },
   "devDependencies": {
-    "@napi-rs/canvas": "^0.1.93",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "electron": "^35.0.0",
-    "electron-builder": "^26.0.0",
-    "esbuild": "^0.25.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "framer-motion": "^12.34.0",
@@ -34,40 +27,5 @@
     "react-dom": "19.2.3",
     "tailwindcss": "^4",
     "typescript": "^5"
-  },
-  "build": {
-    "appId": "com.marginalia.app",
-    "productName": "Marginalia",
-    "files": [
-      "electron-dist/**/*",
-      "out/**/*"
-    ],
-    "extraResources": [
-      {
-        "from": "resources/bin/",
-        "to": "bin/",
-        "filter": [
-          "whisper-cli"
-        ]
-      },
-      {
-        "from": "resources/",
-        "to": ".",
-        "filter": [
-          "trayIconTemplate*.png"
-        ]
-      }
-    ],
-    "mac": {
-      "icon": "icon.icns",
-      "target": {
-        "target": "dmg",
-        "arch": "arm64"
-      },
-      "category": "public.app-category.productivity",
-      "extendInfo": {
-        "NSAppleEventsUsageDescription": "Marginalia needs access to Apple Notes to import your notes."
-      }
-    }
   }
 }
