@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, statSync } from "fs";
 import { join, resolve } from "path";
 
 // Find the views directory in the build output
@@ -50,17 +50,3 @@ for (const entry of readdirSync(src)) {
 
 console.log(`Copied Next.js static export to ${viewsDir}`);
 
-// Patch Info.plist to hide dock icon (menu-bar-only app)
-const contentsDir = resolve(viewsDir, "../../..");
-const plistPath = join(contentsDir, "Info.plist");
-if (existsSync(plistPath)) {
-  let plist = readFileSync(plistPath, "utf-8");
-  if (!plist.includes("LSUIElement")) {
-    plist = plist.replace(
-      "</dict>",
-      `    <key>LSUIElement</key>\n    <true/>\n</dict>`
-    );
-    writeFileSync(plistPath, plist);
-    console.log("Patched Info.plist with LSUIElement (menu-bar-only)");
-  }
-}

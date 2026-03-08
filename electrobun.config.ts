@@ -4,7 +4,7 @@ export default {
   app: {
     name: "Marginalia",
     identifier: "com.marginalia.app",
-    version: "1.0.5",
+    version: "1.0.6",
   },
   runtime: {
     exitOnLastWindowClosed: false,
@@ -24,6 +24,7 @@ export default {
     copy: {
       "resources/trayIconTemplate.png": "views/assets/trayIconTemplate.png",
       "resources/trayIconTemplate@2x.png": "views/assets/trayIconTemplate@2x.png",
+      "resources/bin/whisper-cli": "bin/whisper-cli",
     },
   },
   scripts: {

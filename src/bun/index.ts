@@ -12,6 +12,7 @@ import fs from "node:fs";
 import crypto from "node:crypto";
 import { execFile } from "node:child_process";
 import { parseFile } from "./import-parsers";
+import { showInDock, hideFromDock } from "./dock";
 import {
   getInstalledModel,
   downloadModel,
@@ -45,11 +46,7 @@ if (!fs.existsSync(userData)) {
 // Configure whisper paths
 setUserDataPath(userData);
 
-// TODO: update for packaged app — use bundled binary path
-const whisperBin = path.join(
-  import.meta.dir,
-  "../../resources/bin/whisper-cli"
-);
+const whisperBin = path.join(import.meta.dir, "../bin/whisper-cli");
 setWhisperBinaryPath(whisperBin);
 
 // ---------------------------------------------------------------------------
@@ -381,9 +378,11 @@ function createWindow() {
   });
 
   mainWindow = win;
+  showInDock();
 
   win.on("close", () => {
     mainWindow = null;
+    hideFromDock();
   });
 }
 
@@ -393,6 +392,9 @@ function showMainWindow() {
     mainWindow.focus();
   } else {
     createWindow();
+    if (mainWindow) {
+      mainWindow.focus();
+    }
   }
 }
 
@@ -678,7 +680,7 @@ function createTray() {
     { label: "Quit", action: "tray-quit" },
   ]);
 
-  tray.on("tray-item-clicked", (e) => {
+  tray.on("tray-clicked", (e) => {
     switch (e.data.action) {
       case "tray-show":
         showMainWindow();
