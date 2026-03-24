@@ -119,8 +119,11 @@ export default function Sidebar({
       animate={{ x: 0, opacity: 1 }}
       transition={{ type: "spring", stiffness: 260, damping: 28 }}
     >
+      {/* Drag region above header */}
+      <div className="h-10 shrink-0 electrobun-webkit-app-region-drag" />
+
       {/* Header */}
-      <div className="p-5 pb-3 pt-10">
+      <div className="p-5 pb-3 pt-0">
         <motion.div
           className="flex items-baseline gap-3"
           initial={{ opacity: 0, y: -10 }}

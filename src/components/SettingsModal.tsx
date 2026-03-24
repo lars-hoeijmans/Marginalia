@@ -14,6 +14,48 @@ interface DownloadProgress {
   totalMB: number;
 }
 
+function formatShortcut(shortcut: string): string {
+  return shortcut
+    .replace("CommandOrControl", "\u2318")
+    .replace("Shift", "\u21E7")
+    .replace("Alt", "\u2325")
+    .replace("Control", "\u2303")
+    .replace(/\+/g, " ");
+}
+
+function codeToKey(code: string): string | null {
+  if (code.startsWith("Key")) return code.slice(3);
+  if (code.startsWith("Digit")) return code.slice(5);
+  const map: Record<string, string> = {
+    Space: "Space", Minus: "-", Equal: "=", BracketLeft: "[", BracketRight: "]",
+    Backslash: "\\", Semicolon: ";", Quote: "'", Comma: ",", Period: ".",
+    Slash: "/", Backquote: "`", Enter: "Return", Backspace: "Backspace",
+    Tab: "Tab", Escape: "Escape", ArrowUp: "Up", ArrowDown: "Down",
+    ArrowLeft: "Left", ArrowRight: "Right", Delete: "Delete",
+  };
+  if (code.startsWith("F") && /^F\d+$/.test(code)) return code;
+  return map[code] ?? null;
+}
+
+function keyEventToShortcut(e: KeyboardEvent): string | null {
+  if (["Meta", "Shift", "Alt", "Control"].includes(e.key)) return null;
+
+  const parts: string[] = [];
+  if (e.metaKey) parts.push("CommandOrControl");
+  if (e.ctrlKey && !e.metaKey) parts.push("CommandOrControl");
+  if (e.shiftKey) parts.push("Shift");
+  if (e.altKey) parts.push("Alt");
+
+  // Require Cmd/Ctrl for global shortcuts
+  if (!e.metaKey && !e.ctrlKey) return null;
+  if (parts.length < 2) return null;
+
+  const key = codeToKey(e.code);
+  if (!key) return null;
+  parts.push(key);
+  return parts.join("+");
+}
+
 const POSITIONS: QuickCapturePosition[] = [
   "top-left",    "top-center",    "top-right",
   "center-left", "center",        "center-right",
@@ -63,8 +105,34 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [settings, setSettings] = useState<AppSettings>({
-    quickCapture: { enabled: true, position: "bottom-right" },
+    quickCapture: { enabled: true, position: "bottom-right", shortcut: "CommandOrControl+Shift+N" },
   });
+  const [recordingShortcut, setRecordingShortcut] = useState(false);
+
+  const updateSettings = useCallback((next: AppSettings) => {
+    setSettings(next);
+    window.electron?.saveSettings(next);
+  }, []);
+
+  // Capture shortcut at the window level to prevent other handlers from firing
+  useEffect(() => {
+    if (!recordingShortcut) return;
+    const handler = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      const shortcut = keyEventToShortcut(e);
+      if (shortcut) {
+        setRecordingShortcut(false);
+        updateSettings({
+          ...settings,
+          quickCapture: { ...settings.quickCapture, shortcut },
+        });
+      }
+    };
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
+  }, [recordingShortcut, settings, updateSettings]);
 
   useEffect(() => {
     if (!window.electron) return;
@@ -85,11 +153,11 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
   // Close on Escape (only when not downloading)
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !downloading) onClose();
+      if (e.key === "Escape" && !downloading && !recordingShortcut) onClose();
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [onClose, downloading]);
+  }, [onClose, downloading, recordingShortcut]);
 
   const handleDownload = useCallback(async (filename: string) => {
     if (!window.electron) return;
@@ -128,11 +196,6 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
     if (!window.electron) return;
     const updated = await window.electron.setWhisperModel(filename);
     setModels(updated);
-  }, []);
-
-  const updateSettings = useCallback((next: AppSettings) => {
-    setSettings(next);
-    window.electron?.saveSettings(next);
   }, []);
 
   // Clear delete confirmation when clicking elsewhere
@@ -228,6 +291,23 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
                 })
               }
             />
+
+            <div className={`flex items-center justify-between ${!settings.quickCapture.enabled ? "opacity-40 pointer-events-none" : ""}`}>
+              <p className="text-xs text-ink-muted">Shortcut</p>
+              <button
+                type="button"
+                onClick={() => setRecordingShortcut(!recordingShortcut)}
+                className={`px-3 py-1.5 text-xs rounded-md border transition-colors cursor-pointer ${
+                  recordingShortcut
+                    ? "border-accent bg-accent/10 text-accent"
+                    : "border-edge bg-surface-hover/50 text-ink-muted hover:text-ink"
+                }`}
+              >
+                {recordingShortcut
+                  ? "Press shortcut\u2026"
+                  : formatShortcut(settings.quickCapture.shortcut)}
+              </button>
+            </div>
           </div>
 
           <hr className="border-edge-light" />
