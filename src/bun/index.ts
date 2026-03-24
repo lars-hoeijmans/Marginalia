@@ -3,10 +3,14 @@ import Electrobun, {
   BrowserView,
   ApplicationMenu,
   Tray,
-  GlobalShortcut,
   Utils,
   Screen,
 } from "electrobun/bun";
+import {
+  register as registerHotKey,
+  unregister as unregisterHotKey,
+  unregisterAll as unregisterAllHotKeys,
+} from "./carbon-hotkey";
 import path from "node:path";
 import fs from "node:fs";
 import crypto from "node:crypto";
@@ -54,7 +58,7 @@ setWhisperBinaryPath(whisperBin);
 // ---------------------------------------------------------------------------
 
 const defaultSettings: AppSettings = {
-  quickCapture: { enabled: true, position: "bottom-right" },
+  quickCapture: { enabled: true, position: "bottom-right", shortcut: "CommandOrControl+Shift+N" },
 };
 
 function loadSettings(): AppSettings {
@@ -68,6 +72,9 @@ function loadSettings(): AppSettings {
         position:
           parsed?.quickCapture?.position ??
           defaultSettings.quickCapture.position,
+        shortcut:
+          parsed?.quickCapture?.shortcut ??
+          defaultSettings.quickCapture.shortcut,
       },
     };
   } catch {
@@ -294,6 +301,7 @@ const mainRpc = BrowserView.defineRPC<MainWindowRPC>({
       },
 
       saveSettings: async ({ settings }) => {
+        const oldShortcut = currentSettings.quickCapture.shortcut;
         const wasEnabled = currentSettings.quickCapture.enabled;
         currentSettings = settings;
         const tmp = settingsPath + ".tmp";
@@ -305,10 +313,10 @@ const mainRpc = BrowserView.defineRPC<MainWindowRPC>({
         await fs.promises.rename(tmp, settingsPath);
 
         // Re-register or unregister the global shortcut
-        GlobalShortcut.unregister("CommandOrControl+Shift+N");
+        unregisterHotKey(oldShortcut);
         if (settings.quickCapture.enabled) {
-          GlobalShortcut.register(
-            "CommandOrControl+Shift+N",
+          registerHotKey(
+            settings.quickCapture.shortcut,
             toggleQuickCapture
           );
         } else if (wasEnabled) {
@@ -542,7 +550,7 @@ function buildMenu() {
       label: "File",
       submenu: [
         {
-          label: "Quick Capture",
+          label: "Quick Note",
           action: "quick-capture",
           accelerator: "Shift+N",
         },
@@ -705,10 +713,10 @@ createTray();
 createWindow();
 
 if (currentSettings.quickCapture.enabled) {
-  GlobalShortcut.register("CommandOrControl+Shift+N", toggleQuickCapture);
+  registerHotKey(currentSettings.quickCapture.shortcut, toggleQuickCapture);
 }
 
 Electrobun.events.on("before-quit", () => {
   isQuitting = true;
-  GlobalShortcut.unregisterAll();
+  unregisterAllHotKeys();
 });
