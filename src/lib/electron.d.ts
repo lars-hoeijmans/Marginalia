@@ -15,6 +15,7 @@ interface AppSettings {
   quickCapture: {
     enabled: boolean;
     position: QuickCapturePosition;
+    shortcut: string;
   };
 }
 

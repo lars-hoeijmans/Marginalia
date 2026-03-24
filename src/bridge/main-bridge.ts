@@ -45,6 +45,35 @@ const rpc = Electroview.defineRPC<MainWindowRPC>({
 
 const electroview = new Electroview({ rpc });
 
+// Init drag regions — mirror Electrobun's internal preload drag region logic
+function sendInternal(id: string, payload: unknown) {
+  const win = window as Record<string, unknown>;
+  const bridge = win.__electrobunInternalBridge as { postMessage: (msg: string) => void } | undefined;
+  if (!bridge) return;
+  const msg = JSON.stringify({ type: "message", id, payload });
+  bridge.postMessage(JSON.stringify([msg]));
+}
+
+function isAppRegionDrag(e: MouseEvent): boolean {
+  const target = e.target as HTMLElement;
+  if (!target?.closest) return false;
+  return !!target.closest(".electrobun-webkit-app-region-drag");
+}
+
+document.addEventListener("mousedown", (e) => {
+  if (isAppRegionDrag(e)) {
+    const win = window as Record<string, unknown>;
+    sendInternal("startWindowMove", { id: win.__electrobunWindowId });
+  }
+});
+
+document.addEventListener("mouseup", (e) => {
+  if (isAppRegionDrag(e)) {
+    const win = window as Record<string, unknown>;
+    sendInternal("stopWindowMove", { id: win.__electrobunWindowId });
+  }
+});
+
 (window as Record<string, unknown>).electron = {
   loadNotes: () => electroview.rpc.request.loadNotes(),
 
