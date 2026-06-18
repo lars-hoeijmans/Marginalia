@@ -12,9 +12,19 @@ rm -rf "$BUILD_DIR"
 echo "==> Cloning whisper.cpp..."
 git clone --depth 1 https://github.com/ggml-org/whisper.cpp.git "$BUILD_DIR"
 
-echo "==> Building whisper-cli for arm64 with Metal..."
+echo "==> Building whisper-cli for arm64 with Metal, Accelerate, and Core ML..."
 cd "$BUILD_DIR"
-cmake -B build -DCMAKE_OSX_ARCHITECTURES=arm64 -DBUILD_SHARED_LIBS=OFF
+cmake -B build \
+  -DCMAKE_OSX_ARCHITECTURES=arm64 \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DBUILD_SHARED_LIBS=OFF \
+  -DGGML_METAL=ON \
+  -DGGML_METAL_EMBED_LIBRARY=ON \
+  -DGGML_ACCELERATE=ON \
+  -DGGML_BLAS=ON \
+  -DGGML_BLAS_VENDOR=Apple \
+  -DWHISPER_COREML=ON \
+  -DWHISPER_COREML_ALLOW_FALLBACK=ON
 cmake --build build -j --config Release
 
 echo "==> Copying whisper-cli to $OUT_DIR..."
