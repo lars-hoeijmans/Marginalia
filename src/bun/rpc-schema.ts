@@ -42,6 +42,22 @@ export interface WhisperDownloadProgress {
   totalMB: number;
 }
 
+export interface WhisperBuildToolsStatus {
+  supported: boolean;
+  ok: boolean;
+  missing: string[];
+}
+
+export interface WhisperRebuildProgress {
+  line: string;
+  stream: "stdout" | "stderr";
+}
+
+export interface WhisperRebuildResult {
+  success: boolean;
+  error?: string;
+}
+
 export interface WhisperModelInfo {
   filename: string;
   label: string;
@@ -72,6 +88,11 @@ export type MainWindowRPC = {
       saveSettings: { params: { settings: AppSettings }; response: void };
       whisperModelStatus: { params: void; response: string | null };
       downloadWhisperModel: { params: { filename: string }; response: void };
+      checkWhisperBuildTools: {
+        params: void;
+        response: WhisperBuildToolsStatus;
+      };
+      rebuildWhisper: { params: void; response: WhisperRebuildResult };
       getWhisperModels: { params: void; response: WhisperModelInfo[] };
       deleteWhisperModel: {
         params: { filename: string };
@@ -101,6 +122,7 @@ export type MainWindowRPC = {
       pickAndTranscribeAudio: void;
       notesChangedExternally: void;
       whisperDownloadProgress: WhisperDownloadProgress;
+      whisperRebuildProgress: WhisperRebuildProgress;
       transcriptionProgress: { active: boolean };
     };
   }>;

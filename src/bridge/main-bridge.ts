@@ -23,7 +23,7 @@ function emit(event: string, ...args: unknown[]) {
 }
 
 const rpc = Electroview.defineRPC<MainWindowRPC>({
-  maxRequestTime: 120000,
+  maxRequestTime: 330000,
   handlers: {
     requests: {},
     messages: {
@@ -37,6 +37,8 @@ const rpc = Electroview.defineRPC<MainWindowRPC>({
       notesChangedExternally: () => emit("notesChangedExternally"),
       whisperDownloadProgress: (progress) =>
         emit("whisperDownloadProgress", progress),
+      whisperRebuildProgress: (progress) =>
+        emit("whisperRebuildProgress", progress),
       transcriptionProgress: (data) =>
         emit("transcriptionProgress", data),
     },
@@ -104,6 +106,12 @@ document.addEventListener("mouseup", (e) => {
   downloadWhisperModel: (filename: string) =>
     electroview.rpc.request.downloadWhisperModel({ filename }),
 
+  checkWhisperBuildTools: () =>
+    electroview.rpc.request.checkWhisperBuildTools(),
+
+  rebuildWhisper: () =>
+    electroview.rpc.request.rebuildWhisper(),
+
   getWhisperModels: () => electroview.rpc.request.getWhisperModels(),
 
   deleteWhisperModel: (filename: string) =>
@@ -130,6 +138,13 @@ document.addEventListener("mouseup", (e) => {
       totalMB: number;
     }) => void
   ) => addListener("whisperDownloadProgress", callback),
+
+  onWhisperRebuildProgress: (
+    callback: (progress: {
+      line: string;
+      stream: "stdout" | "stderr";
+    }) => void
+  ) => addListener("whisperRebuildProgress", callback),
 
   onOpenWhisperSetup: (callback: () => void) =>
     addListener("openWhisperSetup", callback),

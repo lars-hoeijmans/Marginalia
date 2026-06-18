@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import type { AppSettings, QuickCapturePosition, WhisperModelInfo } from "@/lib/electron";
+import type { AppSettings, ElectronAPI, QuickCapturePosition, WhisperModelInfo } from "@/lib/electron";
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -12,6 +12,40 @@ interface DownloadProgress {
   percent: number;
   downloadedMB: number;
   totalMB: number;
+}
+
+interface WhisperBuildToolsStatus {
+  supported: boolean;
+  ok: boolean;
+  missing: string[];
+}
+
+interface WhisperRebuildProgress {
+  line: string;
+  stream: "stdout" | "stderr";
+}
+
+interface WhisperRebuildResult {
+  success: boolean;
+  error?: string;
+}
+
+type WhisperElectronAPI = ElectronAPI & {
+  checkWhisperBuildTools: () => Promise<WhisperBuildToolsStatus>;
+  rebuildWhisper: () => Promise<WhisperRebuildResult>;
+  onWhisperRebuildProgress: (
+    callback: (progress: WhisperRebuildProgress) => void
+  ) => () => void;
+};
+
+type RebuildState = "idle" | "checking" | "rebuilding" | "success";
+
+function getWhisperBuildToolsMessage(status: WhisperBuildToolsStatus): string {
+  if (!status.supported) return "Whisper rebuild is only available on macOS.";
+  if (status.missing.includes("Xcode Command Line Tools")) {
+    return "Xcode Command Line Tools required. Run: xcode-select --install";
+  }
+  return `Missing build tools: ${status.missing.join(", ")}`;
 }
 
 function formatShortcut(shortcut: string): string {
@@ -102,6 +136,11 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [progress, setProgress] = useState<DownloadProgress | null>(null);
+  const [buildToolsStatus, setBuildToolsStatus] =
+    useState<WhisperBuildToolsStatus | null>(null);
+  const [rebuildState, setRebuildState] = useState<RebuildState>("idle");
+  const [rebuildLog, setRebuildLog] = useState<WhisperRebuildProgress[]>([]);
+  const [rebuildMessage, setRebuildMessage] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [settings, setSettings] = useState<AppSettings>({
@@ -135,11 +174,15 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
   }, [recordingShortcut, settings, updateSettings]);
 
   useEffect(() => {
-    if (!window.electron) return;
-    window.electron.loadSettings().then(setSettings);
-    window.electron.getWhisperModels().then((m) => {
+    const electron = window.electron as WhisperElectronAPI | undefined;
+    if (!electron) return;
+    electron.loadSettings().then(setSettings);
+    electron.getWhisperModels().then((m) => {
       setModels(m);
       setLoading(false);
+    });
+    electron.checkWhisperBuildTools().then(setBuildToolsStatus).catch(() => {
+      setBuildToolsStatus(null);
     });
   }, []);
 
@@ -150,14 +193,29 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
     });
   }, []);
 
-  // Close on Escape (only when not downloading)
+  useEffect(() => {
+    const electron = window.electron as WhisperElectronAPI | undefined;
+    if (!electron?.onWhisperRebuildProgress) return;
+    return electron.onWhisperRebuildProgress((p) => {
+      setRebuildLog((current) => [...current, p].slice(-6));
+    });
+  }, []);
+
+  // Close on Escape (only when not downloading or rebuilding)
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !downloading && !recordingShortcut) onClose();
+      if (
+        e.key === "Escape" &&
+        !downloading &&
+        rebuildState !== "rebuilding" &&
+        !recordingShortcut
+      ) {
+        onClose();
+      }
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [onClose, downloading, recordingShortcut]);
+  }, [onClose, downloading, rebuildState, recordingShortcut]);
 
   const handleDownload = useCallback(async (filename: string) => {
     if (!window.electron) return;
@@ -198,10 +256,47 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
     setModels(updated);
   }, []);
 
+  const handleRebuildWhisper = useCallback(async () => {
+    const electron = window.electron as WhisperElectronAPI | undefined;
+    if (!electron) return;
+
+    setError(null);
+    setRebuildMessage(null);
+    setRebuildLog([]);
+    setRebuildState("checking");
+
+    try {
+      const tools = await electron.checkWhisperBuildTools();
+      setBuildToolsStatus(tools);
+      if (!tools.supported || !tools.ok) {
+        setRebuildState("idle");
+        setRebuildMessage(getWhisperBuildToolsMessage(tools));
+        return;
+      }
+
+      setRebuildState("rebuilding");
+      const result = await electron.rebuildWhisper();
+      if (result.success) {
+        setRebuildState("success");
+        setRebuildMessage("Whisper rebuilt successfully.");
+      } else {
+        setRebuildState("idle");
+        setRebuildMessage(result.error ?? "Whisper rebuild failed.");
+      }
+    } catch (e) {
+      setRebuildState("idle");
+      setRebuildMessage((e as Error).message);
+    }
+  }, []);
+
   // Clear delete confirmation when clicking elsewhere
   const clearConfirm = useCallback(() => setConfirmingDelete(null), []);
 
-  const canClose = !downloading;
+  const canClose = !downloading && rebuildState !== "rebuilding";
+  const showWhisperRebuild =
+    typeof window !== "undefined" &&
+    !!window.electron &&
+    buildToolsStatus?.supported === true;
 
   return (
     <motion.div
@@ -426,6 +521,89 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
           )}
 
           {error && <p className="text-xs text-danger">{error}</p>}
+
+          {showWhisperRebuild && (
+            <>
+              <hr className="border-edge-light" />
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-medium text-ink-muted uppercase tracking-wide">
+                      Whisper binary
+                    </p>
+                    <p className="text-xs text-ink-muted mt-1">
+                      Rebuild whisper.cpp locally with Metal, Core ML, and Accelerate.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRebuildWhisper}
+                    disabled={
+                      !!downloading ||
+                      rebuildState === "checking" ||
+                      rebuildState === "rebuilding"
+                    }
+                    className="shrink-0 px-3 py-1.5 text-xs rounded-md border border-edge bg-surface-hover/50 text-ink-muted hover:text-ink transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {rebuildState === "checking"
+                      ? "Checking..."
+                      : rebuildState === "rebuilding"
+                        ? "Rebuilding..."
+                        : "Rebuild Whisper"}
+                  </button>
+                </div>
+
+                {rebuildState === "rebuilding" && (
+                  <div className="space-y-2">
+                    <div className="h-1.5 rounded-full bg-edge overflow-hidden">
+                      <motion.div
+                        className="h-full w-1/3 bg-accent rounded-full"
+                        animate={{ x: ["-100%", "300%"] }}
+                        transition={{
+                          repeat: Infinity,
+                          duration: 1.4,
+                          ease: "easeInOut",
+                        }}
+                      />
+                    </div>
+                    <div className="max-h-28 overflow-hidden rounded-lg border border-edge bg-surface-hover/40 px-2.5 py-2">
+                      {rebuildLog.length === 0 ? (
+                        <p className="text-[11px] text-ink-muted">
+                          Starting build...
+                        </p>
+                      ) : (
+                        <div className="space-y-1">
+                          {rebuildLog.map((entry, index) => (
+                            <p
+                              key={`${entry.line}-${index}`}
+                              className={`text-[11px] leading-snug truncate ${
+                                entry.stream === "stderr"
+                                  ? "text-danger"
+                                  : "text-ink-muted"
+                              }`}
+                            >
+                              {entry.line}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {rebuildMessage && (
+                  <p
+                    className={`text-xs ${
+                      rebuildState === "success" ? "text-accent" : "text-danger"
+                    }`}
+                  >
+                    {rebuildMessage}
+                  </p>
+                )}
+              </div>
+            </>
+          )}
 
           {/* Privacy note */}
           <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-surface-hover/50">

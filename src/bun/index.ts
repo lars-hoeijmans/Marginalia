@@ -14,7 +14,7 @@ import {
 import path from "node:path";
 import fs from "node:fs";
 import crypto from "node:crypto";
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { parseFile } from "./import-parsers";
 import { showInDock, hideFromDock } from "./dock";
 import {
@@ -52,6 +52,9 @@ setUserDataPath(userData);
 
 const whisperBin = path.join(import.meta.dir, "../bin/whisper-cli");
 setWhisperBinaryPath(whisperBin);
+
+const WHISPER_REBUILD_TIMEOUT_MS = 5 * 60 * 1000;
+let whisperRebuildRunning = false;
 
 // ---------------------------------------------------------------------------
 // Settings
@@ -124,6 +127,158 @@ function getAppUrl() {
   return "views://app/index.html";
 }
 
+function getWhisperSetupScriptPath(): string {
+  const candidates = [
+    path.join(process.cwd(), "scripts/setup-whisper.sh"),
+    path.join(import.meta.dir, "../../scripts/setup-whisper.sh"),
+  ];
+
+  const scriptPath = candidates.find((candidate) => fs.existsSync(candidate));
+  if (!scriptPath) {
+    throw new Error("Could not find scripts/setup-whisper.sh");
+  }
+
+  return scriptPath;
+}
+
+function commandAvailable(command: string, args: string[]): Promise<boolean> {
+  return new Promise((resolve) => {
+    execFile(command, args, { timeout: 10000 }, (error) => {
+      resolve(!error);
+    });
+  });
+}
+
+async function checkWhisperBuildTools() {
+  if (process.platform !== "darwin") {
+    return { supported: false, ok: false, missing: ["macOS"] };
+  }
+
+  const checks = await Promise.all([
+    commandAvailable("git", ["--version"]),
+    commandAvailable("cmake", ["--version"]),
+    commandAvailable("xcode-select", ["-p"]),
+  ]);
+  const labels = ["git", "cmake", "Xcode Command Line Tools"];
+  const missing = labels.filter((_, index) => !checks[index]);
+
+  return {
+    supported: true,
+    ok: missing.length === 0,
+    missing,
+  };
+}
+
+function sendWhisperRebuildProgress(line: string, stream: "stdout" | "stderr") {
+  if (!mainWindow) return;
+  mainWindow.webview.rpc.send.whisperRebuildProgress({ line, stream });
+}
+
+async function rebuildWhisperBinary() {
+  if (whisperRebuildRunning) {
+    return { success: false, error: "Whisper rebuild is already running." };
+  }
+
+  const tools = await checkWhisperBuildTools();
+  if (!tools.supported) {
+    return { success: false, error: "Whisper rebuild is only available on macOS." };
+  }
+  if (!tools.ok) {
+    return {
+      success: false,
+      error:
+        tools.missing.includes("Xcode Command Line Tools")
+          ? "Xcode Command Line Tools required. Run: xcode-select --install"
+          : `Missing build tools: ${tools.missing.join(", ")}`,
+    };
+  }
+
+  let scriptPath: string;
+  try {
+    scriptPath = getWhisperSetupScriptPath();
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+
+  whisperRebuildRunning = true;
+  sendWhisperRebuildProgress("Starting whisper.cpp rebuild...", "stdout");
+
+  return new Promise<{ success: boolean; error?: string }>((resolve) => {
+    let settled = false;
+    let stdoutBuffer = "";
+    let stderrBuffer = "";
+    let lastErrorLine = "";
+    const proc = spawn("bash", [scriptPath], {
+      cwd: path.dirname(path.dirname(scriptPath)),
+      env: process.env,
+    });
+
+    const finish = (result: { success: boolean; error?: string }) => {
+      if (settled) return;
+      settled = true;
+      whisperRebuildRunning = false;
+      resolve(result);
+    };
+
+    const flushLines = (
+      chunk: Buffer,
+      stream: "stdout" | "stderr",
+      currentBuffer: string
+    ) => {
+      const parts = (currentBuffer + chunk.toString()).split(/\r?\n/);
+      const nextBuffer = parts.pop() ?? "";
+
+      for (const part of parts) {
+        const line = part.trimEnd();
+        if (!line) continue;
+        if (stream === "stderr") lastErrorLine = line;
+        sendWhisperRebuildProgress(line, stream);
+      }
+
+      return nextBuffer;
+    };
+
+    const timeout = setTimeout(() => {
+      proc.kill("SIGTERM");
+      finish({ success: false, error: "Whisper rebuild timed out." });
+    }, WHISPER_REBUILD_TIMEOUT_MS);
+
+    proc.stdout.on("data", (chunk: Buffer) => {
+      stdoutBuffer = flushLines(chunk, "stdout", stdoutBuffer);
+    });
+
+    proc.stderr.on("data", (chunk: Buffer) => {
+      stderrBuffer = flushLines(chunk, "stderr", stderrBuffer);
+    });
+
+    proc.on("error", (error) => {
+      clearTimeout(timeout);
+      finish({ success: false, error: error.message });
+    });
+
+    proc.on("close", (code) => {
+      clearTimeout(timeout);
+
+      if (stdoutBuffer.trim()) {
+        sendWhisperRebuildProgress(stdoutBuffer.trimEnd(), "stdout");
+      }
+      if (stderrBuffer.trim()) {
+        lastErrorLine = stderrBuffer.trimEnd();
+        sendWhisperRebuildProgress(lastErrorLine, "stderr");
+      }
+
+      if (code === 0) {
+        finish({ success: true });
+      } else {
+        finish({
+          success: false,
+          error: lastErrorLine || `Whisper rebuild failed with exit code ${code}.`,
+        });
+      }
+    });
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Main Window
 // ---------------------------------------------------------------------------
@@ -142,7 +297,7 @@ function dismissQuickCapture() {
 }
 
 const mainRpc = BrowserView.defineRPC<MainWindowRPC>({
-  maxRequestTime: 30000,
+  maxRequestTime: WHISPER_REBUILD_TIMEOUT_MS + 30000,
   handlers: {
     requests: {
       loadNotes: async () => {
@@ -338,6 +493,10 @@ const mainRpc = BrowserView.defineRPC<MainWindowRPC>({
           }
         });
       },
+
+      checkWhisperBuildTools,
+
+      rebuildWhisper: rebuildWhisperBinary,
 
       getWhisperModels: () => {
         return getModelsWithStatus();
